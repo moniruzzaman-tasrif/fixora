@@ -27,23 +27,16 @@ import {
   Users,
 } from "lucide-react";
 import { Logo } from "@/components/layout/logo";
-import { User, UserRole } from "@/types";
+import { User } from "@/types";
 import { PUBLIC_NAV_ITEMS, ROLE_DASHBOARD_ROUTES, ROLE_BADGE_VARIANTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 interface MobileNavProps {
   user: User | null;
   onSignOut?: () => void;
-  onRoleSwitch?: (role: UserRole) => void;
-  onToggleLogin?: () => void;
 }
 
-export function MobileNav({
-  user,
-  onSignOut,
-  onRoleSwitch,
-  onToggleLogin,
-}: MobileNavProps) {
+export function MobileNav({ user, onSignOut }: MobileNavProps) {
   const [open, setOpen] = React.useState(false);
   const pathname = usePathname();
 
@@ -112,82 +105,34 @@ export function MobileNav({
                   <p className="text-xs text-slate-500 truncate mt-0.5">{user.email}</p>
                 </div>
               </div>
-
-              {/* Role Switcher in Demo Mode */}
-              {onRoleSwitch && (
-                <div className="mt-3 pt-2.5 border-t border-slate-200">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[10px] uppercase font-bold text-slate-400">
-                      Preview Role
-                    </span>
-                    {onToggleLogin && (
-                      <button
-                        type="button"
-                        onClick={onToggleLogin}
-                        className="text-[10px] text-teal-700 font-medium hover:underline"
-                      >
-                        Sign Out Demo
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    {(["customer", "technician", "admin"] as UserRole[]).map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => onRoleSwitch(r)}
-                        className={`text-xs py-1 px-1 rounded text-center capitalize font-medium transition-colors ${
-                          user.role === r
-                            ? "bg-teal-700 text-white"
-                            : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-                        }`}
-                      >
-                        {r.slice(0, 4)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
+            /* Logged-out State: Sign In and Sign Up options */
             <div className="p-4 mx-4 mt-4 rounded-xl bg-teal-50/70 border border-teal-100">
               <p className="text-xs text-teal-900 font-medium mb-3">
                 Sign in to book repair services or manage your technician profile.
               </p>
               <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full border-teal-200 text-teal-800 hover:bg-teal-100"
-                  onClick={() => {
-                    closeSheet();
-                    window.location.href = "/sign-in";
-                  }}
-                >
-                  <LogIn className="size-3.5 mr-1" />
-                  Sign In
-                </Button>
-                <Button
-                  size="sm"
-                  className="w-full bg-teal-700 hover:bg-teal-800 text-white"
-                  onClick={() => {
-                    closeSheet();
-                    window.location.href = "/sign-up";
-                  }}
-                >
-                  <UserPlus className="size-3.5 mr-1" />
-                  Sign Up
-                </Button>
+                <Link href="/sign-in" onClick={closeSheet}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-teal-200 text-teal-800 hover:bg-teal-100"
+                  >
+                    <LogIn className="size-3.5 mr-1" />
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/sign-up" onClick={closeSheet}>
+                  <Button
+                    size="sm"
+                    className="w-full bg-teal-700 hover:bg-teal-800 text-white"
+                  >
+                    <UserPlus className="size-3.5 mr-1" />
+                    Sign Up
+                  </Button>
+                </Link>
               </div>
-              {onToggleLogin && (
-                <button
-                  type="button"
-                  onClick={onToggleLogin}
-                  className="mt-2 text-[11px] text-teal-700 hover:underline block text-center w-full"
-                >
-                  (Or click to activate Demo Login)
-                </button>
-              )}
             </div>
           )}
 
@@ -319,7 +264,7 @@ export function MobileNav({
           )}
         </div>
 
-        {/* Footer actions */}
+        {/* Footer actions if logged in */}
         {user && (
           <div className="p-4 border-t border-slate-100">
             <Button

@@ -11,6 +11,7 @@ import { PasswordField } from "@/components/auth/password-field";
 import { RoleSelector, SelectableRole } from "@/components/auth/role-selector";
 import { ROLE_DASHBOARD_ROUTES } from "@/lib/constants";
 import { Loader2, ArrowRight } from "lucide-react";
+import { signUp } from "@/lib/auth-client";
 
 export function SignUpForm() {
   const router = useRouter();
@@ -66,14 +67,17 @@ export function SignUpForm() {
     setIsLoading(true);
 
     try {
+
+
+
       // -----------------------------------------------------------------------
       // TODO(owner): Replace with BetterAuth signup integration:
-      // const res = await authClient.signUp.email({
-      //   name,
-      //   email,
-      //   password,
-      //   role, // 'customer' or 'technician'
-      // });
+      const res = await signUp.email({
+        name,
+        email,
+        password,
+        role, // 'customer' or 'technician'
+      });
       // -----------------------------------------------------------------------
 
       // Simulated network request for UI development and testing

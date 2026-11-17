@@ -31,10 +31,9 @@ import { ROLE_DASHBOARD_ROUTES, ROLE_LABELS, ROLE_BADGE_VARIANTS } from "@/lib/c
 interface UserNavProps {
   user: User;
   onSignOut?: () => void;
-  onRoleSwitch?: (role: UserRole) => void;
 }
 
-export function UserNav({ user, onSignOut, onRoleSwitch }: UserNavProps) {
+export function UserNav({ user, onSignOut }: UserNavProps) {
   const router = useRouter();
 
   const initials = user.name
@@ -176,36 +175,6 @@ export function UserNav({ user, onSignOut, onRoleSwitch }: UserNavProps) {
               <span>Update Profile</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
-
-          {/* Quick Demo Role Switcher for examiner/testing if handler provided */}
-          {onRoleSwitch && (
-            <>
-              <DropdownMenuSeparator className="my-1.5" />
-              <div className="px-2 py-1">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
-                  Preview As Role
-                </span>
-                <div className="grid grid-cols-3 gap-1">
-                  {(["customer", "technician", "admin"] as UserRole[]).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => onRoleSwitch(r)}
-                      className={`text-[11px] py-1 px-1.5 rounded text-center capitalize font-medium transition-colors ${
-                        user.role === r
-                          ? "bg-teal-700 text-white"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {r.slice(0, 4)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          <DropdownMenuSeparator className="my-1.5" />
 
           {/* Sign Out */}
           <DropdownMenuItem

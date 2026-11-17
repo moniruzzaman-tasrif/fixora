@@ -11,7 +11,6 @@ interface RoleSelectorProps {
   onChange: (role: SelectableRole) => void;
   disabled?: boolean;
 }
-
 export function RoleSelector({
   value,
   onChange,
@@ -20,19 +19,19 @@ export function RoleSelector({
   const roles: {
     id: SelectableRole;
     title: string;
-    subtitle: string;
+    // subtitle: string;
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
     {
       id: "customer",
-      title: "I need repairs (Customer)",
-      subtitle: "Browse certified technicians, book repairs & pay after completion.",
+      title: "Customer",
+      // subtitle: "Browse certified technicians, book repairs & pay after completion.",
       icon: User,
     },
     {
       id: "technician",
-      title: "I fix devices (Technician)",
-      subtitle: "List repair services, accept job requests & grow your business.",
+      title: "Technician",
+      // subtitle: "List repair services, accept job requests & grow your business.",
       icon: Wrench,
     },
   ];
@@ -53,17 +52,17 @@ export function RoleSelector({
               key={role.id}
               onClick={() => !disabled && onChange(role.id)}
               className={cn(
-                "relative flex cursor-pointer flex-col justify-between rounded-xl border p-4 transition-all duration-150 select-none",
+                "relative flex cursor-pointer items-center justify-between rounded-xl border p-3.5 transition-all duration-150 select-none",
                 isSelected
                   ? "border-teal-600 bg-teal-50/70 shadow-xs ring-1 ring-teal-600"
                   : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/70",
                 disabled && "cursor-not-allowed opacity-50"
               )}
             >
-              <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex items-center gap-3 min-w-0">
                 <div
                   className={cn(
-                    "flex size-9 items-center justify-center rounded-lg transition-colors",
+                    "flex size-9 items-center justify-center rounded-lg transition-colors shrink-0",
                     isSelected
                       ? "bg-teal-700 text-white"
                       : "bg-slate-100 text-slate-600"
@@ -71,23 +70,27 @@ export function RoleSelector({
                 >
                   <Icon className="size-4.5" />
                 </div>
-                {isSelected && (
-                  <CheckCircle2 className="size-4.5 text-teal-700 shrink-0" />
-                )}
-              </div>
-
-              <div>
-                <p
+                <span
                   className={cn(
-                    "text-sm font-bold transition-colors",
-                    isSelected ? "text-teal-950" : "text-slate-900"
+                    "text-sm font-semibold truncate transition-colors",
+                    isSelected ? "text-teal-950 font-bold" : "text-slate-800"
                   )}
                 >
                   {role.title}
-                </p>
-                <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                  {role.subtitle}
-                </p>
+                </span>
+              </div>
+
+              <div
+                className={cn(
+                  "flex size-5 items-center justify-center rounded-full border transition-all shrink-0 ml-2",
+                  isSelected
+                    ? "border-teal-600 bg-teal-600 text-white"
+                    : "border-slate-300 bg-white"
+                )}
+              >
+                {isSelected && (
+                  <CheckCircle2 className="size-4 text-white" />
+                )}
               </div>
             </div>
           );
