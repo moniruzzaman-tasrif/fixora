@@ -6,28 +6,30 @@ import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, UserRole } from "@/types";
-import { ROLE_BADGE_VARIANTS, ROLE_DASHBOARD_ROUTES } from "@/lib/constants";
+import { User } from "@/types";
+import { ROLE_BADGE_VARIANTS } from "@/lib/constants";
+import { authClient } from "@/lib/auth-client";
 import {
   Menu,
   Home,
   LogOut,
-  Sparkles,
-  ExternalLink,
 } from "lucide-react";
 
 interface DashboardTopbarProps {
   user: User;
   onToggleSidebar: () => void;
-  onRoleSwitch?: (role: UserRole) => void;
 }
 
 export function DashboardTopbar({
   user,
   onToggleSidebar,
-  onRoleSwitch,
 }: DashboardTopbarProps) {
   const router = useRouter();
+
+  const handleSignOut = async () => {
+    await authClient.signOut();
+    router.replace("/");
+  };
 
   const initials = user.name
     ? user.name
@@ -70,34 +72,8 @@ export function DashboardTopbar({
         </div>
       </div>
 
-      {/* Right: Quick Role Switcher for Evaluators + User Avatar & Logout */}
+      {/* Right: User Card & Sign Out */}
       <div className="flex items-center gap-3">
-        {/* Quick Testing Switcher */}
-        {onRoleSwitch && (
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs">
-            <Sparkles className="size-3 text-amber-500" />
-            <span className="text-[11px] font-semibold text-slate-500">
-              Switch Role:
-            </span>
-            {(["customer", "technician", "admin"] as UserRole[]).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => {
-                  onRoleSwitch(r);
-                  router.push(ROLE_DASHBOARD_ROUTES[r]);
-                }}
-                className={`text-[11px] px-2 py-0.5 rounded-full font-medium capitalize transition-all ${
-                  user.role === r
-                    ? "bg-teal-700 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* User Card & Role Badge */}
         <div className="flex items-center gap-3 pl-2 sm:border-l sm:border-slate-200">
@@ -125,7 +101,7 @@ export function DashboardTopbar({
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => router.push("/sign-in")}
+            onClick={handleSignOut}
             className="text-slate-400 hover:text-red-600 hover:bg-red-50"
             title="Sign Out"
             aria-label="Sign Out"

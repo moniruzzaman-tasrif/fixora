@@ -93,3 +93,13 @@ export const SERVICE_CATEGORIES = [
   "Washing Machine",
   "Electrical",
 ] as const;
+
+export const SERVICE_AREAS = [
+  "Dhanmondi",
+  "Mirpur",
+  "Uttara",
+  "Banani",
+  "Gulshan",
+  "Mohammadpur",
+  "Other",
+] as const;

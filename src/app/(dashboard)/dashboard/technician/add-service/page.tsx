@@ -4,21 +4,24 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SERVICE_CATEGORIES } from "@/lib/constants";
+import { uploadImage } from "@/lib/upload";
+import { useCurrentUser } from "@/lib/session";
 import { ServiceCategory, ServiceMode } from "@/types";
-import { Upload, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function AddServicePage() {
   const router = useRouter();
 
-  // Read-only technician info from session
-  // TODO(owner): replace with authClient.useSession()
-  const technicianName = "Tanvir Hasan";
-  const technicianEmail = "tanvir.tech@fixora.com";
+  // Read-only technician info taken from the BetterAuth session.
+  const { user } = useCurrentUser();
+  const technicianName = user?.name ?? "—";
+  const technicianEmail = user?.email ?? "—";
 
   const [title, setTitle] = React.useState("");
   const [category, setCategory] = React.useState<ServiceCategory>("Smartphone");
@@ -27,20 +30,11 @@ export default function AddServicePage() {
   const [estimatedDuration, setEstimatedDuration] = React.useState("");
   const [serviceMode, setServiceMode] = React.useState<ServiceMode>("Home Visit");
   const [serviceArea, setServiceArea] = React.useState("");
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [isAvailable, setIsAvailable] = React.useState(true);
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
 
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      if (errors.image) setErrors((prev) => ({ ...prev, image: "" }));
-    }
-  };
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -59,8 +53,8 @@ export default function AddServicePage() {
     if (!serviceArea.trim()) {
       errs.serviceArea = "Covered service area is required (e.g. 'Mirpur, Dhaka')";
     }
-    if (!selectedFile && !previewUrl) {
-      errs.image = "Please select a service banner image to upload via ImgBB";
+    if (!imageFile) {
+      errs.image = "Please select a service banner image";
     }
 
     setErrors(errs);
@@ -70,38 +64,54 @@ export default function AddServicePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSubmitting) return;
+
     if (!validate()) {
       toast.error("Please fill in all required fields accurately.");
       return;
     }
 
+    // `validate()` guarantees an image, but this also narrows the type.
+    if (!imageFile) return;
+
     setIsSubmitting(true);
 
     try {
-      // -----------------------------------------------------------------------
-      // TODO(owner):
-      // 1. Upload selectedFile to ImgBB API:
-      // const formData = new FormData();
-      // formData.append("image", selectedFile);
-      // const uploadRes = await fetch(`https://api.imgbb.com/1/upload?key=${API_KEY}`, ...);
-      // const imageUrl = uploadRes.data.url;
-      //
-      // 2. Save service via POST /api/services:
-      // await fetch("/api/services", {
-      //   method: "POST",
-      //   body: JSON.stringify({ ...data, image: imageUrl, approvalStatus: "pending", isAvailable: true }),
-      // });
-      // -----------------------------------------------------------------------
+      // The services collection stores the ImgBB URL, so upload the banner first.
+      const imageUrl = await uploadImage(imageFile);
 
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      // Client-owned fields only. The server must fill technicianName /
+      // technicianEmail from the session, set approvalStatus to "pending" on
+      // create, generate createdAt and _id (see src/types/index.ts).
+      const payload = {
+        title: title.trim(),
+        category,
+        description: description.trim(),
+        image: imageUrl,
+        basePrice: Number(basePrice),
+        estimatedDuration: estimatedDuration.trim(),
+        serviceMode,
+        serviceArea: serviceArea.trim(),
+        isAvailable,
+      };
+
+      // -----------------------------------------------------------------------
+      // TODO(owner): POST `payload` to /api/services. Never trust a status,
+      // price or owner email from the body; derive them on the server.
+      // -----------------------------------------------------------------------
+      void payload;
 
       toast.success(
         "Service submitted successfully! It is now pending admin approval before appearing publicly."
       );
 
       router.push("/dashboard/technician/my-services");
-    } catch {
-      toast.error("Failed to add service. Please try again.");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to add service. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -135,6 +145,10 @@ export default function AddServicePage() {
                   {technicianEmail}
                 </p>
               </div>
+              <p className="sm:col-span-2 text-[11px] text-slate-500">
+                Copied automatically from your technician account and stored on
+                the service as the owner.
+              </p>
             </div>
 
             {/* Service Title */}
@@ -293,34 +307,45 @@ export default function AddServicePage() {
               )}
             </div>
 
-            {/* Service Image Upload (ImgBB File Input) */}
+            {/* Service Banner Image */}
             <div className="space-y-2">
               <Label htmlFor="image">
-                Service Banner Image (ImgBB Upload) <span className="text-red-500">*</span>
+                Service Banner Image <span className="text-red-500">*</span>
               </Label>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  disabled={isSubmitting}
-                  className="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
-                />
+              <ImageUploadField
+                id="image"
+                shape="banner"
+                value={imageFile}
+                onChange={(file) => {
+                  setImageFile(file);
+                  if (errors.image) setErrors((prev) => ({ ...prev, image: "" }));
+                }}
+                onError={(message) =>
+                  setErrors((prev) => ({ ...prev, image: message ?? "" }))
+                }
+                error={errors.image}
+                disabled={isSubmitting}
+                hint="Required. JPG, PNG or WebP up to 2 MB. Stored on ImgBB."
+              />
+            </div>
 
-                {previewUrl && (
-                  <div className="relative size-16 rounded-xl overflow-hidden border border-slate-200 shrink-0">
-                    <img
-                      src={previewUrl}
-                      alt="Service preview"
-                      className="size-full object-cover"
-                    />
-                  </div>
-                )}
+            {/* Availability */}
+            <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3.5">
+              <input
+                id="isAvailable"
+                type="checkbox"
+                checked={isAvailable}
+                onChange={(e) => setIsAvailable(e.target.checked)}
+                disabled={isSubmitting}
+                className="mt-0.5 size-4 accent-teal-700"
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="isAvailable">Accept booking requests</Label>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Turn this off to keep the listing hidden from customers
+                  without deleting it. You can change it later from My Services.
+                </p>
               </div>
-              {errors.image && (
-                <p className="text-xs text-red-600 font-medium">{errors.image}</p>
-              )}
             </div>
 
             {/* Moderation Notice */}

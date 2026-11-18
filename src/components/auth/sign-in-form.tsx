@@ -8,10 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PasswordField } from "@/components/auth/password-field";
-import { DEMO_USERS } from "@/data/demo-session";
-import { UserRole } from "@/types";
 import { ROLE_DASHBOARD_ROUTES } from "@/lib/constants";
-import { Loader2, ArrowRight, Sparkles } from "lucide-react";
+import { isUserRole } from "@/lib/session";
+import { Loader2, ArrowRight } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
 
 export function SignInForm() {
@@ -52,89 +51,47 @@ export function SignInForm() {
     setIsLoading(true);
 
     try {
-      // -----------------------------------------------------------------------
-      // TODO(owner): Full production BetterAuth integration
-      try {
-        const res = await signIn.email({
-          email,
-          password,
-          callbackURL: callbackUrl || undefined,
-        });
-        if (res && !res.error) {
-          toast.success("Signed in successfully! Welcome back.");
-          const destination = callbackUrl || "/dashboard/customer";
-          router.push(destination);
-          return;
-        }
-      } catch {
-        // Backend not connected yet; proceed with UI development preview below
+      const { data, error } = await signIn.email({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        toast.error(
+          error.message || "Invalid email or password. Please try again."
+        );
+        return;
       }
-      // -----------------------------------------------------------------------
 
-      // Simulated network auth response for UI development and testing
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      // Determine role from demo users or default to customer
-      let detectedRole: UserRole = "customer";
-      if (email.includes("tech")) detectedRole = "technician";
-      else if (email.includes("admin")) detectedRole = "admin";
+      // The role is read back from the database through the BetterAuth session.
+      // Fall back to the customer dashboard only if the field is unexpected.
+      const role =
+        data?.user && isUserRole(data.user.role) ? data.user.role : "customer";
 
       toast.success("Signed in successfully! Welcome back.");
 
-      // Navigate to callback URL if specified, otherwise to role dashboard
-      const destination = callbackUrl || ROLE_DASHBOARD_ROUTES[detectedRole];
-      router.push(destination);
+      // Only allow internal paths so a crafted `callbackUrl` cannot redirect
+      // the browser to another site.
+      const destination =
+        callbackUrl && callbackUrl.startsWith("/")
+          ? callbackUrl
+          : ROLE_DASHBOARD_ROUTES[role];
+
+      router.replace(destination);
+      router.refresh();
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : "Invalid email or password. Please try again.";
+        err instanceof Error
+          ? err.message
+          : "Invalid email or password. Please try again.";
       toast.error(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Helper for quick testing by the assignment examiner
-  const fillDemoAccount = (role: UserRole) => {
-    const demo = DEMO_USERS[role];
-    setEmail(demo.email);
-    setPassword("Fixora123!");
-    setErrors({});
-    toast.info(`Filled credentials for ${role} demo account.`);
-  };
-
   return (
     <div className="space-y-6">
-      {/* 1-Click Demo Accounts (helpful for evaluation) */}
-      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-        <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-slate-700">
-          <Sparkles className="size-3.5 text-amber-500" />
-          <span>Quick Test Accounts (Evaluation):</span>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => fillDemoAccount("customer")}
-            className="text-xs py-1.5 px-2 rounded-lg bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 text-slate-700 font-medium transition-all text-center"
-          >
-            Customer
-          </button>
-          <button
-            type="button"
-            onClick={() => fillDemoAccount("technician")}
-            className="text-xs py-1.5 px-2 rounded-lg bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 text-slate-700 font-medium transition-all text-center"
-          >
-            Technician
-          </button>
-          <button
-            type="button"
-            onClick={() => fillDemoAccount("admin")}
-            className="text-xs py-1.5 px-2 rounded-lg bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 text-slate-700 font-medium transition-all text-center"
-          >
-            Admin
-          </button>
-        </div>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email Field */}
         <div className="space-y-1.5">

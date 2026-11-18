@@ -1,31 +1,27 @@
 "use client";
 
-import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "@/components/layout/logo";
 import { UserNav } from "@/components/layout/user-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Button } from "@/components/ui/button";
 import { PUBLIC_NAV_ITEMS, ROLE_DASHBOARD_ROUTES } from "@/lib/constants";
-import { User } from "@/types";
+import { authClient } from "@/lib/auth-client";
+import { useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { LogIn, UserPlus } from "lucide-react";
 
-interface NavbarProps {
-  initialUser?: User | null;
-}
-
-export function Navbar({ initialUser = null }: NavbarProps) {
+export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
 
-  // In production, session state binds to BetterAuth client:
-  // const { data: session } = authClient.useSession();
-  const [currentUser, setCurrentUser] = React.useState<User | null>(initialUser);
+  // The signed-in user (and role) comes from the BetterAuth session.
+  const { user } = useCurrentUser();
 
-  const handleSignOut = () => {
-    // TODO(owner): replace with authClient.signOut()
-    setCurrentUser(null);
+  const handleSignOut = async () => {
+    await authClient.signOut();
+    router.refresh();
   };
 
   return (
@@ -69,11 +65,11 @@ export function Navbar({ initialUser = null }: NavbarProps) {
 
         {/* Right side: Action Controls & User Nav */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          {currentUser ? (
+          {user ? (
             /* Logged-in State: Dashboard Link + User Dropdown */
             <div className="flex items-center gap-3">
               <Link
-                href={ROLE_DASHBOARD_ROUTES[currentUser.role]}
+                href={ROLE_DASHBOARD_ROUTES[user.role]}
                 className="hidden sm:inline-flex"
               >
                 <Button
@@ -85,7 +81,7 @@ export function Navbar({ initialUser = null }: NavbarProps) {
                 </Button>
               </Link>
 
-              <UserNav user={currentUser} onSignOut={handleSignOut} />
+              <UserNav user={user} onSignOut={handleSignOut} />
             </div>
           ) : (
             /* Logged-out State: Sign In and Sign Up buttons (strict requirement from AGENTS.md) */
@@ -113,7 +109,7 @@ export function Navbar({ initialUser = null }: NavbarProps) {
           )}
 
           {/* Mobile Navigation Trigger (< md) */}
-          <MobileNav user={currentUser} onSignOut={handleSignOut} />
+          <MobileNav user={user} onSignOut={handleSignOut} />
         </div>
       </div>
     </header>

@@ -9,7 +9,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-slate-50 text-slate-800">
+    <div className="min-h-screen flex flex-col justify-between bg-slate-50 text-slate-700">
       {/* Top Header bar with Logo & Back to Home */}
       <header className="w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-xs py-3 px-4 sm:px-8">
         <div className="mx-auto max-w-6xl flex items-center justify-between">

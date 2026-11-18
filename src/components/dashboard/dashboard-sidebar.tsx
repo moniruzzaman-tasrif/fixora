@@ -43,6 +43,10 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const pathname = usePathname();
 
+  // The shell only renders the sidebar once the BetterAuth session is loaded,
+  // so `user.role` is already the role stored in the database.
+  const activeRole: UserRole = user.role;
+
   // Role-specific navigation items
   const customerLinks: SidebarLink[] = [
     {
@@ -119,8 +123,8 @@ export function DashboardSidebar({
     admin: adminLinks,
   };
 
-  const currentRoleLinks = roleNavMap[user.role] || customerLinks;
-  const roleBadge = ROLE_BADGE_VARIANTS[user.role];
+  const currentRoleLinks = roleNavMap[activeRole];
+  const roleBadge = ROLE_BADGE_VARIANTS[activeRole];
 
   return (
     <>

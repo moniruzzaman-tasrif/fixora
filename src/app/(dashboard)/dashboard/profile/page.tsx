@@ -7,73 +7,111 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DEMO_USERS } from "@/data/demo-session";
-import { User, UserRole } from "@/types";
+import { validateImageFile } from "@/lib/upload";
+import { formatDate } from "@/lib/format";
+import { useCurrentUser } from "@/lib/session";
+import { UserRole } from "@/types";
 import { toast } from "sonner";
 import {
   User as UserIcon,
   Mail,
   Phone,
   MapPin,
-  FileText,
   Camera,
   ShieldCheck,
-  Check,
   Save,
   Lock,
   Calendar,
   Wrench,
 } from "lucide-react";
 
+type ProfileDraft = {
+  name: string;
+  phone: string;
+  area: string;
+  bio: string;
+};
+
 export default function ProfilePage() {
-  // TODO(owner): replace with BetterAuth session user:
-  // const { data: session } = authClient.useSession();
-  const [profile, setProfile] = React.useState<User>({
-    ...DEMO_USERS.technician,
-    phone: "+880 1819-876543",
-    area: "Mirpur & Gulshan, Dhaka",
-    bio: "Certified electronics technician with 7+ years of experience in smartphone, laptop, and AC servicing.",
-  });
+  // The signed-in user (and role) comes from the BetterAuth session.
+  const { user, isPending } = useCurrentUser();
 
-  const [name, setName] = React.useState(profile.name);
-  const [phone, setPhone] = React.useState(profile.phone || "");
-  const [area, setArea] = React.useState(profile.area || "");
-  const [bio, setBio] = React.useState(profile.bio || "");
-  const [imagePreview, setImagePreview] = React.useState(profile.image || "");
+  // `draft` only holds what the user typed; untouched fields fall back to the
+  // session values, so the form follows the session once it loads.
+  const [draft, setDraft] = React.useState<ProfileDraft | null>(null);
+  const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
+  const [imageError, setImageError] = React.useState<string | undefined>();
   const [isSaving, setIsSaving] = React.useState(false);
+  const previewUrlRef = React.useRef<string | null>(null);
 
-  // File upload simulation (or ImgBB)
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setImagePreview(url);
-      toast.success("Profile photo updated preview");
-    }
+  // Object URLs are only created by the file picker, so free the last one.
+  React.useEffect(
+    () => () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    },
+    []
+  );
+
+  const values: ProfileDraft = draft ?? {
+    name: user?.name ?? "",
+    phone: user?.phone ?? "",
+    area: user?.area ?? "",
+    bio: user?.bio ?? "",
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) {
+  const update = (field: keyof ProfileDraft, value: string) => {
+    setDraft({ ...values, [field]: value });
+  };
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+
+    // Let the user pick the same file again after an error.
+    event.target.value = "";
+
+    if (!file) return;
+
+    const problem = validateImageFile(file);
+    if (problem) {
+      setImageError(problem);
+      return;
+    }
+
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+
+    const url = URL.createObjectURL(file);
+    previewUrlRef.current = url;
+    setImagePreview(url);
+    setImageFile(file);
+    setImageError(undefined);
+  };
+
+  const handleSave = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!user) return;
+
+    if (!values.name.trim()) {
       toast.error("Full Name cannot be empty");
       return;
     }
 
     setIsSaving(true);
 
-    setTimeout(() => {
-      // TODO(owner): replace with API call: PATCH /api/users/profile { name, phone, area, bio, image }
-      setProfile((prev) => ({
-        ...prev,
-        name,
-        phone,
-        area,
-        bio,
-        image: imagePreview,
-      }));
+    try {
+      // -----------------------------------------------------------------------
+      // TODO(owner): upload `imageFile` with `uploadImage()` and PATCH the
+      // result together with the form values to /api/users/profile:
+      // { name, phone, area, bio, image }
+      // Nothing is stored until that endpoint exists — no fake success here.
+      // -----------------------------------------------------------------------
+      toast.info(
+        "Profile updates need PATCH /api/users/profile on the backend, so nothing was saved yet."
+      );
+    } finally {
       setIsSaving(false);
-      toast.success("Profile updated successfully!");
-    }, 600);
+    }
   };
 
   const getRoleBadge = (role: UserRole) => {
@@ -103,6 +141,24 @@ export default function ProfilePage() {
     }
   };
 
+  // The dashboard shell redirects signed-out visitors; this keeps the page
+  // itself safe while that redirect is in flight.
+  if (isPending || !user) {
+    return (
+      <div
+        className="max-w-5xl space-y-6"
+        role="status"
+        aria-label="Loading profile"
+      >
+        <div className="h-9 w-48 animate-pulse rounded-lg bg-slate-200" />
+        <div className="h-80 animate-pulse rounded-xl border border-slate-200 bg-white" />
+      </div>
+    );
+  }
+
+  const avatarSrc = imagePreview ?? user.image ?? "";
+  const memberSince = user.createdAt ? formatDate(user.createdAt) : "—";
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
@@ -118,16 +174,16 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center">
               {/* Avatar with Camera Icon */}
               <div className="relative group size-28 rounded-full overflow-hidden border-2 border-teal-600 bg-slate-100 mb-4 shadow-sm">
-                {imagePreview ? (
+                {avatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={imagePreview}
-                    alt={name}
+                    src={avatarSrc}
+                    alt={values.name || "Profile photo"}
                     className="size-full object-cover"
                   />
                 ) : (
                   <div className="flex size-full items-center justify-center font-bold text-teal-800 text-3xl">
-                    {name.charAt(0)}
+                    {values.name.charAt(0).toUpperCase() || "F"}
                   </div>
                 )}
                 <label className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/60 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
@@ -135,16 +191,27 @@ export default function ProfilePage() {
                   <span className="text-[10px] font-semibold">Change Photo</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handlePhotoChange}
                     className="sr-only"
                   />
                 </label>
               </div>
 
-              <h2 className="font-bold text-lg text-slate-900">{name}</h2>
-              <p className="text-xs text-slate-500 mb-2">{profile.email}</p>
-              <div>{getRoleBadge(profile.role)}</div>
+              {imageError && (
+                <p role="alert" className="text-xs font-medium text-red-600 mb-2">
+                  {imageError}
+                </p>
+              )}
+              {imageFile && !imageError && (
+                <p className="text-[11px] text-slate-500 mb-2">
+                  New photo selected: {imageFile.name}
+                </p>
+              )}
+
+              <h2 className="font-bold text-lg text-slate-900">{values.name}</h2>
+              <p className="text-xs text-slate-500 mb-2">{user.email}</p>
+              <div>{getRoleBadge(user.role)}</div>
             </div>
 
             <div className="mt-6 pt-5 border-t border-slate-100 text-left space-y-3 text-xs">
@@ -152,13 +219,13 @@ export default function ProfilePage() {
                 <span className="flex items-center gap-1.5">
                   <Calendar className="size-3.5 text-slate-400" /> Member Since
                 </span>
-                <span className="font-semibold text-slate-800">August 2026</span>
+                <span className="font-semibold text-slate-800">{memberSince}</span>
               </div>
               <div className="flex items-center justify-between text-slate-500">
                 <span className="flex items-center gap-1.5">
                   <ShieldCheck className="size-3.5 text-emerald-600" /> Account Status
                 </span>
-                <span className="font-semibold text-emerald-700">Active & Verified</span>
+                <span className="font-semibold text-emerald-700">Active</span>
               </div>
             </div>
           </Card>
@@ -202,8 +269,8 @@ export default function ProfilePage() {
                     <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                     <Input
                       id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      value={values.name}
+                      onChange={(e) => update("name", e.target.value)}
                       placeholder="e.g. Rahim Ahmed"
                       className="pl-9 h-10 text-sm bg-white border-slate-200 focus-visible:ring-teal-600"
                       required
@@ -225,7 +292,7 @@ export default function ProfilePage() {
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                     <Input
                       id="email"
-                      value={profile.email}
+                      value={user.email}
                       disabled
                       className="pl-9 h-10 text-sm bg-slate-50 text-slate-600 border-slate-200 cursor-not-allowed"
                     />
@@ -246,8 +313,8 @@ export default function ProfilePage() {
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                       <Input
                         id="phone"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        value={values.phone}
+                        onChange={(e) => update("phone", e.target.value)}
                         placeholder="+880 1700-000000"
                         className="pl-9 h-10 text-sm bg-white border-slate-200 focus-visible:ring-teal-600"
                       />
@@ -263,8 +330,8 @@ export default function ProfilePage() {
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
                       <Input
                         id="area"
-                        value={area}
-                        onChange={(e) => setArea(e.target.value)}
+                        value={values.area}
+                        onChange={(e) => update("area", e.target.value)}
                         placeholder="e.g. Mirpur & Dhanmondi, Dhaka"
                         className="pl-9 h-10 text-sm bg-white border-slate-200 focus-visible:ring-teal-600"
                       />
@@ -280,8 +347,8 @@ export default function ProfilePage() {
                   <textarea
                     id="bio"
                     rows={4}
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
+                    value={values.bio}
+                    onChange={(e) => update("bio", e.target.value)}
                     placeholder="Briefly describe your experience, specialties, or service preferences..."
                     className="w-full rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-teal-600 focus:ring-1 focus:ring-teal-600"
                   />

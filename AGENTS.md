@@ -357,9 +357,26 @@ One `<StatusBadge status={...} />` component, one color map in `src/lib/constant
 ### Typography
 
 - Primary font: **Inter** for the entire Fixora frontend.
-- Apply Inter consistently to headings, body text, buttons, forms, navigation, dashboards, tables, and other UI elements.
-- Use the existing project setup and available packages where possible; do not install any new package without explicit approval.
-- Keep typography responsive, clean, and readable.
+- Apply Inter consistently to headings, body text, buttons, forms, navigation,
+  dashboards, tables, and every other UI element. No page or component may switch to
+  a different font family.
+- Use the existing project setup and available packages where possible; do not install
+  any new package without explicit approval. Inter is loaded with Next.js's built-in
+  `next/font/google` loader in `src/app/layout.tsx` (for example
+  `Inter({ subsets: ["latin"], variable: "--font-inter" })`), so **no extra package is
+  required**.
+- Point the global `--font-sans` token in `globals.css` at the Inter variable, e.g.
+  `--font-sans: var(--font-inter);`, and keep `--font-heading` mapped to it as well.
+  Tailwind's `font-sans` then applies Inter to buttons, inputs, tables, dialogs and
+  dashboards automatically. Never leave the circular
+  `--font-sans: var(--font-sans);` reference in place.
+- Fallback stack: `Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`
+  for the moment before the webfont loads.
+- The starter's Geist fonts are replaced by Inter; do not mix Geist and Inter across
+  pages, and do not keep both `next/font` configurations once Inter is wired up.
+- Keep typography responsive, clean, and readable: 16px base text on mobile, no body
+  copy below `text-sm`, comfortable line height (`leading-relaxed` for paragraphs),
+  and no long line lengths on desktop.
 - Headings: font-semibold/bold, `tracking-tight`, balanced wrapping.
 - Body: `text-slate-700`, comfortable line height, max ~70 characters.
 - Suggested scale: display `text-4xl md:text-5xl`, h1 `text-3xl md:text-4xl`,
@@ -408,7 +425,7 @@ from dummy data. They are presentational UI only.
 
 - All dummy data lives in `src/data/`, one file per domain:
   `services.ts`, `bookings.ts`, `payments.ts`, `users.ts`, `categories.ts`,
-  `testimonials.ts`, `stats.ts`, `demo-session.ts`.
+  `testimonials.ts`, `stats.ts`.
 - Every file starts with a banner comment:
   `// ⚠️ DUMMY DATA for UI development only. Replace with API data.`
 - Mirror the real database shape exactly (see §11) so swapping is mechanical.
@@ -423,11 +440,11 @@ from dummy data. They are presentational UI only.
 - Images: use local placeholder assets in `public/` (category SVGs) and
   initials-based avatars. Do **not** depend on random external image URLs that can
   break. When the owner integrates ImgBB, only the image URL changes.
-- A dashboard page renders a demo user (e.g. `demoUsers.technician`) purely for
-  display. Mark it:
-  `// TODO(owner): replace with BetterAuth session`.
-  Never treat it as authentication or authorization.
-- Do not build a fake login/session/role-guard system around dummy data.
+- The signed-in user and role always come from the BetterAuth session through
+  `useCurrentUser()` (`src/lib/session.ts`). Never hardcode or fake a session user,
+  and never treat dummy `src/data/users.ts` rows as the current user.
+- Do not build a fake login/session/role-guard system around dummy data. Client-side
+  redirects in `DashboardShell` are UX only; the server stays authoritative.
 
 ---
 
@@ -518,9 +535,16 @@ documents gaps; it never creates these endpoints.
 | POST | `/api/payments/create-checkout-session` | Customer |
 | GET | `/api/payments/verify?session_id=...` | Customer |
 | POST | `/api/payments/webhook` | Stripe (optional challenge) |
+| POST | `/api/upload` | Public (sign-up photo) — accepts `multipart/form-data` field `image`, returns `{ url }` |
 
 Error behavior: `401` unauthenticated, `403` wrong role/not owner, `400` validation,
 `404` missing, `409` duplicate active request / duplicate payment.
+
+`POST /api/upload` is already implemented in `src/app/api/upload/route.ts`
+(added with explicit owner approval, so keep it): it accepts `multipart/form-data`
+with a single `image` field (JPG/PNG/WebP, max 2 MB), uploads to ImgBB using the
+server-side `IMGBB_API_KEY`, and responds with `{ url }`. Never move that key into
+client code.
 
 ### Environment variables
 

@@ -590,12 +590,11 @@ history (read-only data presentation).
 **Files to create**
 
 - `src/app/(dashboard)/layout.tsx` — shared dashboard shell (sidebar + topbar +
-  content). It reads a **display-only demo user** and the current path to preview
-  the correct role shell until BetterAuth is wired. No access control here.
-- `src/data/demo-session.ts` — `demoUsers.customer/technician/admin` plus a
-  `getDemoUserForPath(pathname)` helper marked
-  `// DEMO ONLY: replace with the BetterAuth session`. This is presentation data,
-  not authentication.
+  content). It reads the signed-in user and role from the BetterAuth session
+  (`src/lib/session.ts`) and renders a skeleton until the session resolves.
+- `src/lib/session.ts` — `useCurrentUser()` maps the BetterAuth session user onto
+  the app `User` shape and validates the database `role`. `src/data/demo-session.ts`
+  has been removed; there is no stand-in demo user any more.
 - `src/components/layout/dashboard-shell.tsx`, `sidebar.tsx`, `topbar.tsx`
   — role-aware nav configs from `constants.ts`; mobile sheet; Home link; user block.
   This is the **first time** the dashboard shell is built; Step 2 does not create it.
@@ -633,10 +632,12 @@ accurate stats derived from dummy bookings, and readable tables.
 - [ ] Stats equal the dummy data.
 - [ ] Tables scroll horizontally on mobile; no clipped actions.
 - [ ] Empty state shown when the dummy array is emptied.
-- [ ] Topbar shows demo name, role, avatar, Home link.
+- [x] Topbar shows the signed-in user's name, role badge and avatar from BetterAuth.
 - [ ] `/dashboard/profile` shows the temporary placeholder (the real page arrives in
       Step 11).
-- [ ] No role guard or auth check is faked.
+- [x] Signed-out visitors are redirected to `/sign-in?callbackUrl=...`; a user who
+      opens another role's dashboard is sent to their own.
+- [x] No role guard or auth check is faked.
 
 **Depends on:** Steps 2, 4, 6.
 

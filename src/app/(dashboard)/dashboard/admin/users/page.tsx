@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DUMMY_USERS } from "@/data/users";
 import { User, UserRole } from "@/types";
 import { formatDate } from "@/lib/format";
+import { useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -25,6 +26,11 @@ import {
 } from "lucide-react";
 
 export default function AdminUsersPage() {
+  // The signed-in admin comes from the BetterAuth session.
+  const { user: currentUser } = useCurrentUser();
+  const isOwnAccount = (target: User) =>
+    Boolean(currentUser && target.email === currentUser.email);
+
   // Local state initialized with dummy users
   const [users, setUsers] = React.useState<User[]>(DUMMY_USERS);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -53,7 +59,7 @@ export default function AdminUsersPage() {
   // Open edit modal
   const handleOpenEdit = (user: User) => {
     // Current admin cannot change their own role to prevent lockout
-    if (user.email === "admin@fixora.com") {
+    if (isOwnAccount(user)) {
       toast.error("Security Rule: You cannot change your own admin account role.");
       return;
     }
@@ -263,7 +269,7 @@ export default function AdminUsersPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleOpenEdit(user)}
-                          disabled={user.email === "admin@fixora.com"}
+                          disabled={isOwnAccount(user)}
                           className="h-8 text-xs font-semibold border-slate-200 hover:border-teal-500 hover:text-teal-700"
                         >
                           <UserCheck className="size-3.5 mr-1 text-teal-600" />
