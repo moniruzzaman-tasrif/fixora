@@ -14,6 +14,7 @@ import { uploadImage } from "@/lib/upload";
 import { useCurrentUser } from "@/lib/session";
 import { ServiceCategory, ServiceMode } from "@/types";
 import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import servicePost from "@/lib/action/api/servicePost";
 
 export default function AddServicePage() {
   const router = useRouter();
@@ -74,15 +75,17 @@ export default function AddServicePage() {
     // `validate()` guarantees an image, but this also narrows the type.
     if (!imageFile) return;
 
+    if (!user) {
+      toast.error("Please sign in again before publishing a service.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       // The services collection stores the ImgBB URL, so upload the banner first.
       const imageUrl = await uploadImage(imageFile);
 
-      // Client-owned fields only. The server must fill technicianName /
-      // technicianEmail from the session, set approvalStatus to "pending" on
-      // create, generate createdAt and _id (see src/types/index.ts).
       const payload = {
         title: title.trim(),
         category,
@@ -92,17 +95,15 @@ export default function AddServicePage() {
         estimatedDuration: estimatedDuration.trim(),
         serviceMode,
         serviceArea: serviceArea.trim(),
+        technicianName: user.name,
+        technicianEmail: user.email,
         isAvailable,
       };
 
-      // -----------------------------------------------------------------------
-      // TODO(owner): POST `payload` to /api/services. Never trust a status,
-      // price or owner email from the body; derive them on the server.
-      // -----------------------------------------------------------------------
-      void payload;
+      const savedService = await servicePost(payload);
 
       toast.success(
-        "Service submitted successfully! It is now pending admin approval before appearing publicly."
+        `"${savedService.title}" submitted successfully! It is now pending admin approval before appearing publicly.`
       );
 
       router.push("/dashboard/technician/my-services");

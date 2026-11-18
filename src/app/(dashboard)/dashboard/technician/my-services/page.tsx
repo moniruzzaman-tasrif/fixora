@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { DUMMY_SERVICES } from "@/data/services";
 import { Service, ServiceCategory, ServiceMode } from "@/types";
 import { SERVICE_CATEGORIES } from "@/lib/constants";
 import { formatCurrency } from "@/lib/format";
@@ -22,18 +21,67 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  ToggleLeft,
-  ToggleRight,
-  Eye,
   Wrench,
   X,
+  AlertCircle,
 } from "lucide-react";
+import getService from "@/lib/action/dataGet/getService";
+import { useCurrentUser } from "@/lib/session";
 
 export default function MyServicesPage() {
-  // TODO(owner): replace with API call: GET /api/services?technicianEmail=...
-  const [services, setServices] = React.useState<Service[]>(() =>
-    DUMMY_SERVICES.filter((s) => s.technicianEmail === "tanvir.tech@fixora.com")
+  const { user, isPending } = useCurrentUser();
+
+  const [services, setServices] = React.useState<Service[]>([]);
+  const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
+    "loading"
   );
+  const [reloadKey, setReloadKey] = React.useState(0);
+
+  // Loads real services from the Express API (via getService()).
+  // If the technician is logged in, only services matching their email are shown.
+  // If not logged in yet (e.g. testing / demo), all services from the database are shown.
+  React.useEffect(() => {
+    if (isPending) return;
+
+    let cancelled = false;
+
+    async function loadData() {
+      try {
+        setLoadState("loading");
+        const dataService: Service[] = await getService();
+        if (cancelled) return;
+
+        const allServices = Array.isArray(dataService) ? dataService : [];
+        const email = user?.email?.toLowerCase();
+
+        const filtered = email
+          ? allServices.filter(
+              (service) => service.technicianEmail?.toLowerCase() === email
+            )
+          : allServices;
+
+        setServices(filtered);
+        setLoadState("ready");
+      } catch (err) {
+        console.error("Failed to load services from API:", err);
+        if (cancelled) return;
+        setLoadState("error");
+      }
+    }
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email, isPending, reloadKey]);
+
+  const handleRetry = () => {
+    setLoadState("loading");
+    setReloadKey((key) => key + 1);
+  };
+
+  const isLoading = isPending || loadState === "loading";
 
   const [editingService, setEditingService] = React.useState<Service | null>(null);
   const [deleteModalService, setDeleteModalService] = React.useState<Service | null>(null);
@@ -45,6 +93,8 @@ export default function MyServicesPage() {
   const [editPrice, setEditPrice] = React.useState("");
   const [editDuration, setEditDuration] = React.useState("");
   const [editMode, setEditMode] = React.useState<ServiceMode>("Home Visit");
+
+
 
   const startEdit = (service: Service) => {
     setEditingService(service);
@@ -155,7 +205,39 @@ export default function MyServicesPage() {
         </Link>
       </PageHeader>
 
-      {services.length === 0 ? (
+      {isLoading ? (
+        <Card
+          className="border border-slate-200/90 shadow-xs overflow-hidden"
+          role="status"
+          aria-busy="true"
+        >
+          <span className="sr-only">Loading your repair services…</span>
+          <div className="divide-y divide-slate-100">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-4 px-5 py-4 animate-pulse"
+              >
+                <div className="size-12 shrink-0 rounded-lg bg-slate-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-1/3 rounded bg-slate-200" />
+                  <div className="h-3 w-1/5 rounded bg-slate-100" />
+                </div>
+                <div className="h-5 w-16 rounded-full bg-slate-100" />
+                <div className="h-6 w-24 rounded-full bg-slate-100" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : loadState === "error" ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Could not load your services"
+          description="We could not reach the repair service server. Please check your connection and try again."
+          actionLabel="Try Again"
+          onAction={handleRetry}
+        />
+      ) : services.length === 0 ? (
         <EmptyState
           icon={Wrench}
           title="No services added yet"
@@ -188,12 +270,18 @@ export default function MyServicesPage() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="relative size-12 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                          <Image
-                            src={service.image}
-                            alt={service.title}
-                            fill
-                            className="object-cover"
-                          />
+                          {service.image ? (
+                            <Image
+                              src={service.image}
+                              alt={service.title}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex size-full items-center justify-center bg-teal-50 text-teal-700">
+                              <Wrench className="size-5" />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 leading-snug">
