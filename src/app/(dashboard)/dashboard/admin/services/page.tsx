@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { DUMMY_SERVICES } from "@/data/services";
 import { Service, ApprovalStatus } from "@/types";
+import getService from "@/lib/action/dataGet/getService";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -25,10 +25,32 @@ import {
 } from "lucide-react";
 
 export default function AdminServicesPage() {
-  const [services, setServices] = React.useState<Service[]>(DUMMY_SERVICES);
+  const [services, setServices] = React.useState<Service[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
   const [searchQuery, setSearchQuery] = React.useState("");
+
+  // Load real services from database
+  React.useEffect(() => {
+    let cancelled = false;
+    getService()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setServices(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch admin services from database:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Details preview modal
   const [selectedService, setSelectedService] = React.useState<Service | null>(null);

@@ -8,9 +8,11 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { MiniBarChart, MiniDonutChart } from "@/components/shared/mini-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DUMMY_SERVICES } from "@/data/services";
+import { Service } from "@/types";
 import { DUMMY_BOOKINGS } from "@/data/bookings";
 import { formatCurrency, formatDate } from "@/lib/format";
+import getService from "@/lib/action/dataGet/getService";
+import { useCurrentUser } from "@/lib/session";
 import {
   Wrench,
   CheckCircle2,
@@ -21,12 +23,33 @@ import {
 } from "lucide-react";
 
 export default function TechnicianDashboardPage() {
-  // TODO(owner): replace with API calls
-  const myServices = DUMMY_SERVICES.filter(
-    (s) => s.technicianEmail === "tanvir.tech@fixora.com"
-  );
+  const { user } = useCurrentUser();
+  const [services, setServices] = React.useState<Service[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getService()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setServices(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load technician dashboard services:", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const email = user?.email?.toLowerCase();
+  const myServices = email
+    ? services.filter((s) => s.technicianEmail?.toLowerCase() === email)
+    : services;
+
   const myRequests = DUMMY_BOOKINGS.filter(
-    (b) => b.technicianEmail === "tanvir.tech@fixora.com"
+    (b) => !email || b.technicianEmail?.toLowerCase() === email
   );
 
   const totalServices = myServices.length;

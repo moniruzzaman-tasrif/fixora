@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DUMMY_USERS } from "@/data/users";
-import { DUMMY_SERVICES } from "@/data/services";
 import { DUMMY_BOOKINGS } from "@/data/bookings";
 import { DUMMY_PAYMENTS } from "@/data/payments";
 import { Service } from "@/types";
+import getService from "@/lib/action/dataGet/getService";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import {
@@ -30,8 +30,25 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
-  // Local state for interactive moderation in the quick view
-  const [services, setServices] = React.useState<Service[]>(DUMMY_SERVICES);
+  // Real services from database
+  const [services, setServices] = React.useState<Service[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getService()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setServices(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load admin dashboard services:", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Statistics
   const totalUsers = DUMMY_USERS.length;

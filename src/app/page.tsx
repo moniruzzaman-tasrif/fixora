@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -222,15 +223,7 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Clean Footer */}
-      <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500">
-        <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 Fixora Inc. All rights reserved.</p>
-          <p className="text-slate-400">
-            Fixora — Your Home, Our Responsibility
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

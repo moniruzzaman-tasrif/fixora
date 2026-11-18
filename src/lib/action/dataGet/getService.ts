@@ -2,8 +2,11 @@ import { Service } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-const getService = async (): Promise<Service[]> => {
-  const res = await fetch(`${API_URL}/services`, {
+const getService = async (query = ""): Promise<Service[]> => {
+  const cleanQuery = query.replace(/^\?/, "").trim();
+  const url = cleanQuery ? `${API_URL}/services?${cleanQuery}` : `${API_URL}/services`;
+
+  const res = await fetch(url, {
     cache: "no-store",
   });
 
