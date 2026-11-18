@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AlertCircle } from "lucide-react";
+import bookingPost from "@/lib/action/api/bookingPost";
 
 interface ServiceBookingCardProps {
   service: Service;
@@ -69,6 +70,7 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
         problemDescription,
       };
 
+      const bokkingData = await bookingPost(payload);
       // Seam / simulation for booking creation
       await new Promise((resolve) => setTimeout(resolve, 800));
 
