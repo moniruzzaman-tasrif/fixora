@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Logo } from "@/components/layout/logo";
-import { ArrowLeft, ShieldCheck, Lock } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -32,18 +32,7 @@ export default function AuthLayout({
       {/* Clean Auth Footer */}
       <footer className="w-full border-t border-slate-200 bg-white py-4 px-4 text-center text-xs text-slate-500">
         <div className="mx-auto max-w-6xl flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1 text-slate-600 font-medium">
-              <Lock className="size-3 text-teal-600" />
-              256-bit Secure Encryption
-            </span>
-            <span>•</span>
-            <span className="flex items-center gap-1 text-slate-600 font-medium">
-              <ShieldCheck className="size-3.5 text-teal-600" />
-              Verified Technicians
-            </span>
-          </div>
-          <p>© 2026 Fixora Platform. All rights reserved.</p>
+          <p>Fixora. All rights reserved.</p>
         </div>
       </footer>
     </div>

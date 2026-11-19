@@ -19,12 +19,12 @@ const steps = [
   {
     icon: Wrench,
     title: "Track the work",
-    text: "The technician accepts, starts, and completes the repair through verified status updates.",
+    text: "Follow the booking as its status changes from accepted to completed.",
   },
   {
     icon: CreditCard,
     title: "Pay after completion",
-    text: "Settle the final amount securely through Stripe only after the work is complete.",
+    text: "Payment is due after the technician marks the repair complete.",
   },
 ];
 
@@ -41,8 +41,8 @@ export default function AboutPage() {
                 A trusted repair journey, from request to payment.
               </h1>
               <p className="text-base leading-relaxed text-slate-600">
-                Fixora connects customers with verified repair technicians while
-                keeping booking progress, final pricing, and payments transparent.
+                Browse approved service listings, submit a repair request, and
+                follow the booking status and final amount in your account.
               </p>
               <Link href="/services">
                 <Button className="mt-2 bg-teal-700 text-white hover:bg-teal-800">

@@ -3,19 +3,18 @@ import Image from "next/image";
 import { Suspense } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { Button } from "@/components/ui/button";
 import OneGetData from "@/lib/action/dataGet/OneGetData";
 import { ServiceBookingCard } from "@/components/services/service-booking-card";
+import { formatCurrency } from "@/lib/format";
+import { notFound } from "next/navigation";
 import {
   Wrench,
   Clock,
   MapPin,
-  ShieldCheck,
-  CheckCircle2,
+  CreditCard,
   Home,
   Store,
-  ChevronLeft,
-  AlertCircle,
+  UserRound,
 } from "lucide-react";
 
 interface ServiceDetailsPageProps {
@@ -53,33 +52,18 @@ async function ServiceDetailsContent({ params }: ServiceDetailsPageProps) {
   const { id } = await params;
   const data = await OneGetData(id);
 
-  if (!data) {
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-50">
-        <Navbar />
-        <div className="flex-1 max-w-xl mx-auto px-4 py-24 text-center">
-          <div className="size-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200">
-            <AlertCircle className="size-8" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">
-            Service Not Found
-          </h1>
-          <p className="text-sm text-slate-500 mb-6">
-            The repair service you requested may have been removed or is temporarily unavailable.
-          </p>
-          <Link href="/services">
-            <Button className="bg-teal-700 hover:bg-teal-800 text-white font-semibold">
-              <ChevronLeft className="size-4 mr-1.5" />
-              Back to Browse Services
-            </Button>
-          </Link>
-        </div>
-        <Footer />
-      </div>
-    );
+  if (
+    !data ||
+    data.approvalStatus !== "approved" ||
+    data.isAvailable !== true
+  ) {
+    notFound();
   }
 
   const isHomeVisit = data.serviceMode === "Home Visit";
+  const technicianName =
+    data.technicianProfile?.name || data.technicianName || "Service provider";
+  const technicianImage = data.technicianProfile?.image?.trim();
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -166,11 +150,11 @@ async function ServiceDetailsContent({ params }: ServiceDetailsPageProps) {
 
                   <div className="p-3.5 rounded-xl bg-white border border-slate-200 col-span-2 sm:col-span-1">
                     <div className="flex items-center gap-2 text-slate-400 text-xs mb-1">
-                      <ShieldCheck className="size-4 text-teal-700" />
-                      <span>Warranty</span>
+                      <CreditCard className="size-4 text-teal-700" />
+                      <span>Starting Price</span>
                     </div>
                     <p className="font-bold text-slate-900 text-sm">
-                      30-Day Guaranteed
+                      {formatCurrency(data.basePrice)}
                     </p>
                   </div>
                 </div>
@@ -184,51 +168,45 @@ async function ServiceDetailsContent({ params }: ServiceDetailsPageProps) {
                 <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
                   {data.description}
                 </p>
-
-                <div className="pt-4 border-t border-slate-100">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3">
-                    What&apos;s Included With This Service
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-teal-600 shrink-0" />
-                      <span>Thorough hardware diagnostic inspection</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-teal-600 shrink-0" />
-                      <span>Genuine, tested replacement components</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-teal-600 shrink-0" />
-                      <span>Bench testing & safety calibration</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="size-4 text-teal-600 shrink-0" />
-                      <span>Pay online only after repair is completed</span>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Technician Profile Card */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between gap-4">
+              <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
                 <div className="flex items-center gap-3">
-                  <div className="size-12 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-lg">
-                    {data.technicianName?.charAt(0) || "T"}
+                  <div className="relative size-14 shrink-0 overflow-hidden rounded-full bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-lg">
+                    {technicianImage ? (
+                      <Image
+                        src={technicianImage}
+                        alt={`${technicianName} profile photo`}
+                        fill
+                        sizes="56px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      technicianName.charAt(0).toUpperCase() || (
+                        <UserRound className="size-5" />
+                      )
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      {technicianName}
+                    </h4>
+                    <p className="text-xs text-slate-500">{data.technicianEmail}</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500">Technician Area</p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {data.technicianProfile?.area?.trim() || "Not provided"}
+                    </p>
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="font-bold text-slate-900 text-sm">
-                        {data.technicianName}
-                      </h4>
-                      <span title="Verified Technician">
-                        <ShieldCheck className="size-4 text-teal-700" />
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500">{data.technicianEmail}</p>
-                    <span className="inline-block mt-1 text-[11px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md">
-                      Verified Fixora Professional
-                    </span>
+                    <p className="text-xs font-semibold text-slate-500">About the Technician</p>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-700 whitespace-pre-line">
+                      {data.technicianProfile?.bio?.trim() || "No technician bio has been provided."}
+                    </p>
                   </div>
                 </div>
               </div>

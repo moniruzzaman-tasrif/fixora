@@ -205,7 +205,7 @@ export function CustomerBookingsClient() {
               title="No bookings found"
               description={
                 bookings.length === 0
-                  ? "You have not requested any repair yet. Browse verified technicians and book your first repair."
+                  ? "You have not requested a repair yet. Browse available services to get started."
                   : "You don't have any repair bookings in this category right now."
               }
               actionLabel="Browse Available Services"

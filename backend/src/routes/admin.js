@@ -67,7 +67,7 @@ r.patch("/services/:id/approval", verifyToken, verifyAdmin, asyncRoute(async (re
     return res.status(400).json({ message: "Invalid approval status" });
   }
   if (!mongoose.isValidObjectId(req.params.id)) {
-    return res.status(400).json({ message: "Invalid service id" });
+    return res.status(400).json({ message: "Invalid service ID" });
   }
 
   const service = await Service.findByIdAndUpdate(

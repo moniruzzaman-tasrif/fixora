@@ -29,7 +29,7 @@ export function getMyServices(): Promise<Service[]> {
  */
 export function createService(
   input: ServiceInput
-): Promise<{ success: boolean; service: Service }> {
+): Promise<Service> {
   return apiRequest("/services", {
     method: "POST",
     body: JSON.stringify(input),
@@ -40,7 +40,7 @@ export function createService(
 export function updateService(
   serviceId: string,
   input: ServiceInput
-): Promise<{ success: boolean; message: string; service: Service }> {
+): Promise<Service> {
   return apiRequest(`/services/${serviceId}`, {
     method: "PATCH",
     body: JSON.stringify(input),
@@ -50,7 +50,7 @@ export function updateService(
 /** Deletes an owned service. */
 export function deleteService(
   serviceId: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean }> {
   return apiRequest(`/services/${serviceId}`, { method: "DELETE" });
 }
 
@@ -58,7 +58,7 @@ export function deleteService(
 export function setServiceAvailability(
   serviceId: string,
   isAvailable: boolean
-): Promise<{ success: boolean; message: string; service: Service }> {
+): Promise<Service> {
   return apiRequest(`/services/${serviceId}/availability`, {
     method: "PATCH",
     body: JSON.stringify({ isAvailable }),
@@ -75,7 +75,7 @@ export function updateBookingStatus(
   bookingId: string,
   status: BookingStatus,
   finalAmount?: number
-): Promise<{ success: boolean; message: string; booking: Booking }> {
+): Promise<Booking> {
   return apiRequest(`/booking/${bookingId}/status`, {
     method: "PATCH",
     body: JSON.stringify(

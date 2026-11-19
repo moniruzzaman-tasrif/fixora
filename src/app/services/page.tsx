@@ -20,18 +20,22 @@ import {
   Home,
   Store,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 
 function ServicesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  console.log(searchParams)
 
   // URL search params
   const initialCategory = searchParams.get("category") || "all";
   const initialSearch = searchParams.get("search") || "";
   const initialMode = searchParams.get("mode") || "all";
-  const initialSort = searchParams.get("sort") || "featured";
+  const requestedSort = searchParams.get("sort");
+  const initialSort =
+    requestedSort === "price-low" || requestedSort === "price-high"
+      ? requestedSort
+      : "newest";
 
   const [searchQuery, setSearchQuery] = React.useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = React.useState(initialCategory);
@@ -40,13 +44,16 @@ function ServicesContent() {
 
   const [services, setServices] = React.useState<Service[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [retryKey, setRetryKey] = React.useState(0);
 
-  // Fetch services from Express API filtered by category, mode, search, and sort from database
+  // Fetch approved services from the API using the URL-backed filters.
   React.useEffect(() => {
     let cancelled = false;
 
     async function fetchServices() {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const queryParams = new URLSearchParams();
 
@@ -62,7 +69,7 @@ function ServicesContent() {
           queryParams.set("search", searchQuery.trim());
         }
 
-        if (selectedSort && selectedSort !== "featured") {
+        if (selectedSort !== "newest") {
           queryParams.set("sort", selectedSort);
         }
 
@@ -71,15 +78,24 @@ function ServicesContent() {
         if (cancelled) return;
 
         if (Array.isArray(data)) {
-          const available = data.filter((s) => s.isAvailable !== false);
-          setServices(available);
+          setServices(
+            data.filter(
+              (service) =>
+                service.approvalStatus === "approved" &&
+                service.isAvailable === true
+            )
+          );
         } else {
           setServices([]);
         }
       } catch (err) {
-        console.warn("Failed to fetch services from database:", err);
         if (cancelled) return;
         setServices([]);
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : "Could not load repair services. Please try again."
+        );
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -99,12 +115,15 @@ function ServicesContent() {
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [selectedCategory, selectedMode, searchQuery, selectedSort]);
+  }, [selectedCategory, selectedMode, searchQuery, selectedSort, retryKey]);
 
   // Update URL helper
   const updateUrlParam = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value && value !== "all") {
+    if (params.get("sort") === "featured") {
+      params.delete("sort");
+    }
+    if (value && value !== "all" && !(key === "sort" && value === "newest")) {
       params.set(key, value);
     } else {
       params.delete(key);
@@ -136,7 +155,7 @@ function ServicesContent() {
   const handleResetFilters = () => {
     setSelectedCategory("all");
     setSelectedMode("all");
-    setSelectedSort("featured");
+    setSelectedSort("newest");
     setSearchQuery("");
     router.replace("/services", { scroll: false });
   };
@@ -144,7 +163,7 @@ function ServicesContent() {
   const hasActiveFilters =
     selectedCategory !== "all" ||
     selectedMode !== "all" ||
-    selectedSort !== "featured" ||
+    selectedSort !== "newest" ||
     searchQuery.trim().length > 0;
 
   // Services returned directly from MongoDB (filtered by category, mode, search, and sort)
@@ -161,7 +180,7 @@ function ServicesContent() {
             <div className="max-w-3xl space-y-4">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-semibold">
                 <Sparkles className="size-3.5 text-teal-600" />
-                <span>Verified Home Appliance & Device Repairs</span>
+                <span>Approved and available repair services</span>
               </div>
 
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
@@ -169,9 +188,8 @@ function ServicesContent() {
               </h1>
 
               <p className="text-base text-slate-600 leading-relaxed">
-                Explore certified repair services from verified technicians.
-                Select your category, filter by Home Visit or Shop Drop-off, and
-                book your repair in minutes.
+                Browse current listings, filter by category or service mode,
+                and send a repair request for an available service.
               </p>
 
               {/* Search bar */}
@@ -179,7 +197,7 @@ function ServicesContent() {
                 <Search className="absolute left-3.5 top-5 size-4 text-slate-400" />
                 <Input
                   type="text"
-                  placeholder="Search by appliance, device issue, technician name or area (e.g. Screen, AC, Mirpur)..."
+                  placeholder="Search by service, category, technician or area..."
                   value={searchQuery}
                   onChange={handleSearchChange}
                   className="h-12 pl-10 pr-10 text-sm bg-slate-50 border-slate-300 rounded-xl focus:bg-white focus:border-teal-600 shadow-2xs"
@@ -305,10 +323,9 @@ function ServicesContent() {
                   onChange={(e) => handleSortChange(e.target.value)}
                   className="h-8 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 focus:border-teal-600 focus:outline-hidden"
                 >
-                  <option value="featured">Featured First</option>
+                  <option value="newest">Recently Added</option>
                   <option value="price-low">Price: Low to High</option>
                   <option value="price-high">Price: High to Low</option>
-                  <option value="newest">Recently Added</option>
                 </select>
               </div>
             </div>
@@ -322,7 +339,7 @@ function ServicesContent() {
             <p className="text-sm text-slate-600">
               Showing{" "}
               <strong className="text-slate-900">
-                {isLoading ? "..." : filteredServices.length}
+                {isLoading ? "..." : loadError ? "—" : filteredServices.length}
               </strong>{" "}
               {filteredServices.length === 1 ? "repair service" : "repair services"}
               {selectedCategory !== "all" && (
@@ -352,13 +369,31 @@ function ServicesContent() {
               ))}
             </div>
           ) : filteredServices.length === 0 ? (
+            loadError ? (
+              <EmptyState
+                icon={AlertCircle}
+                title="Could not load repair services"
+                description={loadError}
+                actionLabel="Try Again"
+                onAction={() => setRetryKey((key) => key + 1)}
+              />
+            ) : (
             <EmptyState
               icon={Wrench}
-              title="No services match your criteria"
-              description="Try adjusting your category, keyword search, or service mode filter to find what you're looking for."
-              actionLabel="Clear All Filters"
-              onAction={handleResetFilters}
+              title={
+                hasActiveFilters
+                  ? "No services match your criteria"
+                  : "No services available"
+              }
+              description={
+                hasActiveFilters
+                  ? "Try adjusting your category, keyword search, or service mode filter."
+                  : "There are no approved and available services at the moment."
+              }
+              actionLabel={hasActiveFilters ? "Clear All Filters" : undefined}
+              onAction={hasActiveFilters ? handleResetFilters : undefined}
             />
+            )
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredServices.map((service) => (

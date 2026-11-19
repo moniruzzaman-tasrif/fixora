@@ -16,6 +16,12 @@
 > instead of guessing. No packages may be installed and no implementation step may
 > start without the owner's explicit **"Start Step N"**.
 
+> **Current data policy:** Runtime application data must come from the active
+> BetterAuth session or the existing backend API. Historical instructions below
+> that describe dummy records, demo sessions, or seed data are superseded. Test
+> fixtures may remain only in test files/directories and must not be used by runtime
+> application code.
+
 ---
 
 ## How to Use This File
@@ -74,9 +80,10 @@ No application features, APIs, auth, database, or environment files exist yet.
 - App states: `loading.tsx`, `error.tsx`, `global-error.tsx`, `not-found.tsx`.
 - All shared components: navbar, footer, sidebar, topbar, cards, tables, badges,
   modals, stat cards, charts, empty states, skeletons.
-- Dummy data + shared types + constants/format/validation helpers.
+- Shared types + constants/format/validation helpers; runtime records come from
+  the session/API.
 - README, environment documentation, deployment configuration.
-- Owner-side backend: Express, MongoDB, BetterAuth, JWT, APIs, ImgBB, Stripe, seed.
+- Owner-side backend: Express, MongoDB, BetterAuth, JWT, APIs, ImgBB, and Stripe.
 
 ### D. Needs verification (do not assume)
 
@@ -136,7 +143,7 @@ Stripe webhook, Vercel (frontend), Node hosting (backend).
 - Follow the global `PageProps<...>` / `LayoutProps<...>` helpers already used in
   `src/app/layout.tsx`.
 - With `cacheComponents: true`, unhandled uncached server data blocks prerendering.
-  Dummy data is static, so this matters when the owner integrates real APIs.
+  Follow the bundled Next.js data-fetching guidance for API-backed pages.
 - React Compiler is on: follow the Rules of React; no manual memo hacks.
 - Tailwind v4 is CSS-first: all tokens go in `globals.css` via `@theme`.
 - Base UI components may expose different props than Radix; inspect generated code.
@@ -165,7 +172,7 @@ Stripe webhook, Vercel (frontend), Node hosting (backend).
 - [ ] **Step 17** — Stripe Payment UI *(AI UI / OWNER Stripe)*
 - [ ] **Step 18** — Search, Filter & Sort Integration Preparation *(AI UI / OWNER server)*
 - [ ] **Step 19** — Loading, Error & Empty States *(AI)*
-- [ ] **Step 20** — Dummy / Seed Data Preparation *(AI dummy / OWNER seed)*
+- [x] **Step 20** — Runtime Data Cleanup *(owner-requested)*
 - [ ] **Step 21** — Frontend Testing, Security Review & Bug Fixing *(AI)*
 - [ ] **Step 22** — Deployment & Final Assignment Checklist *(OWNER-led / AI assists)*
 
@@ -202,6 +209,12 @@ Steps 8, 17 and 19 are therefore **partially** real for the customer role:
   also enforces both values.
 - [x] **Technician / admin dashboards** — pages are connected to the Express API for
   services, bookings, users, approvals, and payments.
+- [x] **Technician mutation response mapping** — technician service create/edit,
+  availability, and booking-status endpoints return raw records; frontend helpers and
+  consumers now match those response shapes. Backend route regression coverage verifies
+  these payloads without writing to MongoDB.
+- [x] **Admin overview moderation dialog** — quick approve/reject actions now render
+  their confirmation dialog after dashboard data loads, not only in the loading state.
 
 ### Implementation audit — 19 November 2026
 
@@ -216,7 +229,7 @@ Steps 8, 17 and 19 are therefore **partially** real for the customer role:
 | Authorization | PASS | JWT bridge, role middleware, ownership checks, and role/self-role protections |
 | ImgBB | PARTIAL | Frontend and server upload implementations exist; live upload requires `IMGBB_API_KEY` |
 | Stripe | BLOCKED | Checkout, verification, and webhook code exist; live credentials and a configured webhook secret are required |
-| Database | PARTIAL | Express/MongoDB models and relationships exist; live Atlas/local MongoDB connection and seed setup remain manual |
+| Database | PARTIAL | Express/MongoDB models and relationships exist; live Atlas/local MongoDB connection setup remains manual |
 | Responsive UI | PASS | Existing responsive tables/cards and mobile dashboard layout; visual browser testing not yet recorded |
 
 ---
@@ -325,7 +338,7 @@ above. No dark-mode toggle (optional in the assignment; not approved).
 
 **Backend/integration notes:** none. This step is pure UI foundation.
 
-**Dummy data:** none yet (types only).
+**Runtime data:** no local records; use the existing session/API integrations.
 
 **Expected result:** A documented, reusable visual system; the temporary starter
 page still loads but now uses brand colors and typography.
@@ -375,8 +388,8 @@ and `lucide-react` icons.
 for now with `// TODO(owner): replace with BetterAuth session`. Build the dropdown
 so the owner only changes the data source later. **No auth logic.**
 
-**Dummy data:** a demo user object may be used to visually test the dropdown, but
-the default public render is logged out.
+**User data:** use the active BetterAuth session when present; never create a
+stand-in user for the dropdown.
 
 **Expected result:** Every public page has a sticky, responsive navbar and a
 complete footer.
@@ -400,8 +413,8 @@ complete footer.
 
 **Owner:** AI
 
-**Objective:** Build a recruiter-ready homepage using realistic dummy data, plus the
-required `/about` page (it reuses the same marketing sections).
+**Objective:** Build the homepage and `/about` page using accurate process copy,
+canonical categories, and real service data where listings are shown.
 
 **Reuse:** Navbar/Footer shell, `SiteButton`, `Card`, `SectionHeading`,
 `StatusBadge`, icons.
@@ -410,13 +423,14 @@ required `/about` page (it reuses the same marketing sections).
 
 - `src/components/home/hero.tsx` — headline, subtitle, search box (submits to
   `/services?search=...`), CTA, illustration/graphic.
-- `src/components/home/featured-services.tsx` — 6 latest approved + available
-  services from dummy data, sorted by `createdAt`.
+- `src/components/home/featured-services.tsx` — show latest approved + available
+  services from the existing services API, or omit the section when none exist.
 - `src/components/home/how-it-works.tsx` — 4 steps (reused on `/about`).
 - `src/components/home/popular-categories.tsx` — 7 category cards linking to
   `/services?category=...`.
-- `src/components/home/why-choose-us.tsx` — trust points + platform stats.
-- `src/components/home/testimonials.tsx` — 6 testimonials.
+- `src/components/home/why-choose-us.tsx` — factual service workflow information;
+  no fabricated platform statistics.
+- Do not show testimonials or ratings unless backed by real review data.
 - `src/components/home/cta.tsx` — "Need a repair?" call to action.
 - `src/components/home/category-card.tsx` — icon, category name, short description,
   link to `/services?category=...`.
@@ -430,21 +444,19 @@ required `/about` page (it reuses the same marketing sections).
 **Components:** ServiceCard (equal height, image, title, category, mode, starting
 price, technician, View Details), CategoryCard, stat tiles, testimonial card.
 
-**Backend/integration notes:** Featured services come from `src/data/services.ts`
-today; the owner replaces the import with
-`GET /api/services?approvalStatus=approved&isAvailable=true&limit=6` later. Keep the
-mapping in one place.
+**Backend/integration notes:** Featured services, if shown, come from the existing
+approved-and-available services API. Keep the mapping in one place.
 
-**Dummy data:** the 12 approved + available services (from the 15 total), 7
-categories, 6 testimonials, platform stats. Service images are local placeholder
-graphics; avatars use initials.
+**Runtime data:** categories are static product taxonomy; service records and all
+counts/ratings must come from real API data. Do not invent testimonial or rating
+records.
 
 **Expected result:** A complete homepage that looks finished and works at all widths.
 
 **Testing checklist**
 
 - [ ] Hero search navigates to `/services?search=<value>`.
-- [ ] Exactly 6 featured cards render, equal height, consistent image size.
+- [ ] Featured cards, if present, only render real approved and available services.
 - [ ] Category cards link to `/services?category=AC` etc.
 - [ ] How-it-works has 4 clear steps; testimonials readable.
 - [ ] `/about` loads directly and reuses the same sections/styles.
@@ -492,7 +504,7 @@ Do not store tokens, set cookies, or redirect based on a fake session. Document 
 expected redirect map: customer → `/dashboard/customer`, technician →
 `/dashboard/technician`, admin → `/dashboard/admin`.
 
-**Dummy data:** none (forms only).
+**Runtime data:** forms do not display fabricated account or service records.
 
 **Expected result:** Professional auth pages that validate correctly and clearly
 state they are not connected yet.
@@ -535,8 +547,7 @@ filters), `EmptyState`, `LoadingSkeleton`.
 
 - Read `search`, `category`, `mode`, `sort` from the URL.
 - Update the URL with `router.replace` (no full reload) when controls change.
-- For the UI demo, filter the dummy list client-side and label it:
-  `// TEMP: client-side demo only — final search/filter/sort must run in MongoDB`.
+-   Read URL filters and send them through the existing services API helper.
 - Sort: newest, price low→high, price high→low.
 - Show a friendly empty state with "Clear filters".
 
@@ -544,8 +555,8 @@ filters), `EmptyState`, `LoadingSkeleton`.
 `GET /api/services`. Keep the param names stable (`search`, `category`, `mode`,
 `sort`) and documented in Step 18.
 
-**Dummy data:** the 12 approved + available services; the 1 pending, 1 rejected, and
-1 unavailable service must never appear publicly.
+**Runtime data:** use actual API results; pending, rejected, and unavailable
+services must never appear publicly.
 
 **Expected result:** A complete browse page whose state survives reload and supports
 `/services?category=AC` deep links.
@@ -587,7 +598,7 @@ filters), `EmptyState`, `LoadingSkeleton`.
 
 **Request form fields**
 
-- Name + Email: read-only (from the demo session placeholder).
+- Name + Email: read-only (from the active BetterAuth session).
 - Phone, Address, Preferred Date (today or future), Problem Description (min 20 chars).
 - Client validation + error messages.
 - Success state: toast + link to `/dashboard/customer/bookings` (UI only).
@@ -604,8 +615,8 @@ filters), `EmptyState`, `LoadingSkeleton`.
 + technician data, default `requested`/`unpaid`, reject duplicate active requests, and
 block technicians/admins. The form must not pretend to save.
 
-**Dummy data:** services; a demo customer for the form's read-only fields; one
-existing active booking to demonstrate the duplicate warning UI.
+**Runtime data:** service details and active booking checks come from the backend;
+the customer identity comes from the active session.
 
 **Expected result:** A detail page that handles unknown/unapproved services and a
 clear, validated request UI with correct role messaging.
@@ -639,9 +650,9 @@ history (read-only data presentation).
 - `src/app/(dashboard)/layout.tsx` — shared dashboard shell (sidebar + topbar +
   content). It reads the signed-in user and role from the BetterAuth session
   (`src/lib/session.ts`) and renders a skeleton until the session resolves.
-- `src/lib/session.ts` — `useCurrentUser()` maps the BetterAuth session user onto
-  the app `User` shape and validates the database `role`. `src/data/demo-session.ts`
-  has been removed; there is no stand-in demo user any more.
+- `src/lib/session.ts` — `useCurrentUser()` maps the active BetterAuth session user
+  onto the app `User` shape and validates the database `role`; invalid session data
+  is not replaced with a stand-in user.
 - `src/components/layout/dashboard-shell.tsx`, `sidebar.tsx`, `topbar.tsx`
   — role-aware nav configs from `constants.ts`; mobile sheet; Home link; user block.
   This is the **first time** the dashboard shell is built; Step 2 does not create it.
@@ -660,25 +671,20 @@ history (read-only data presentation).
 - `src/app/(dashboard)/dashboard/customer/payments/page.tsx` + payments table
   (service, technician, amount, transaction ID, date).
 
-**Backend/integration notes:** Demo customer data only. The booking actions
-(cancel/pay) are added in Steps 16–17. API seams: `GET /api/bookings/my` and the
-customer payment-history endpoint. **The current API contract in AGENTS.md §12 only
-lists admin payments**, so Step 12 must confirm either `GET /api/payments/my` or a
-documented alternative with the owner before integration.
+**Backend/integration notes:** Use the active customer session and the existing
+customer booking/payment APIs. Booking actions are covered in Steps 16–17.
 
-**Dummy data:** demo customer + 5 of the 8 bookings across statuses + 3 of the 4
-payments. The remaining records belong to other customers/technicians so the admin
-views look realistic.
+**Runtime data:** customer bookings and payments must come from the backend API.
 
-**Expected result:** A responsive customer dashboard with a functional sidebar,
-accurate stats derived from dummy bookings, and readable tables.
+**Expected result:** A responsive customer dashboard with stats derived from API
+responses, and readable tables.
 
 **Testing checklist**
 
 - [ ] Sidebar highlights the active page; collapses to a sheet under `lg`.
-- [ ] Stats equal the dummy data.
+- [ ] Stats equal the returned customer booking/payment records.
 - [ ] Tables scroll horizontally on mobile; no clipped actions.
-- [ ] Empty state shown when the dummy array is emptied.
+- [ ] Empty states shown when the APIs return no records.
 - [x] Topbar shows the signed-in user's name, role badge and avatar from BetterAuth.
 - [ ] `/dashboard/profile` shows the temporary placeholder (the real page arrives in
       Step 11).
@@ -712,7 +718,7 @@ accurate stats derived from dummy bookings, and readable tables.
   placeholder** (replaced in Step 15) so the sidebar never dead-ends.
 - `src/app/(dashboard)/dashboard/technician/requests/page.tsx` — **temporary
   placeholder** (replaced in Step 16) for the same reason.
-- Read-only technician name/email from demo data.
+- Read-only technician name/email from the active BetterAuth session.
 
 **Validation:** title ≥ 5, description ≥ 20, basePrice > 0, duration required, mode
 required, area required, image required (UI only).
@@ -721,13 +727,13 @@ required, area required, image required (UI only).
 `approvalStatus: "pending"`. Show "waiting for admin approval" in the success toast.
 Do not call ImgBB.
 
-**Dummy data:** demo technician + their services/bookings for stats.
+**Runtime data:** technician services and bookings come from the backend APIs.
 
 **Expected result:** Technician dashboard and a complete, validated add-service form.
 
 **Testing checklist**
 
-- [ ] Stats correct against dummy data.
+- [ ] Stats correct against the returned technician service/booking records.
 - [ ] Every validation rule blocks submit with an inline message.
 - [ ] File input shows the selected filename/preview if a local object URL is used
       (no network call).
@@ -776,7 +782,7 @@ require its current role to be `admin`. User responses exclude authentication
 credentials. Client-side filters operate on records returned by protected
 endpoints; they are not security controls.
 
-**Dummy data:** None. Admin counts and rows come from the existing collections.
+**Runtime data:** Admin counts and rows come from the existing collections.
 
 **Expected result:** Admin can review and manage all platform records without
 exposing admin data to non-admin API callers.
@@ -823,9 +829,8 @@ The UI must be ready to accept the updated user object; show a toast placeholder
 After real integration, the updated name/photo must appear in the navbar and
 dashboard topbar **without logging out** — the owner handles the session refresh.
 
-**Dummy data:** the profile form takes a `user` prop; render `demoUsers.customer` by
-default and document that the owner swaps in the BetterAuth session. Email and role
-stay read-only. Do not build a role switcher.
+**Runtime data:** pass the active BetterAuth session user to the profile form.
+Email and role stay read-only. Do not build a role switcher or substitute profile.
 
 **Expected result:** A clean, responsive profile form consistent across roles.
 
@@ -845,12 +850,12 @@ stay read-only. Do not build a role switcher.
 
 **Owner:** AI (documentation) + OWNER (approval)
 
-**Objective:** Agree on how dummy data will be replaced by real APIs without
-rewriting the UI.
+**Objective:** Keep API contracts and UI data mappings aligned without rewriting
+the UI.
 
 **Deliverables (append to AGENTS.md / this roadmap unless a new doc is approved)**
 
-- [ ] Data-source map: component → dummy file → future endpoint → response shape.
+- [ ] Data-source map: component → existing API/session source → response shape.
 - [ ] Finalize API base URL + environment variable names.
 - [ ] **Resolve contract gaps** before integration: customer payment-history endpoint
       (`GET /api/payments/my` or an agreed alternative) is not in AGENTS.md §12 yet.
@@ -863,12 +868,10 @@ rewriting the UI.
       `images.remotePatterns` for the ImgBB host). **Any config change requires
       explicit owner approval.**
 - [ ] Currency/date consistency between API and UI.
-- [ ] Definition of "done" for replacing each dummy import.
+- [ ] Confirm runtime code contains no test-fixture or fake-record imports.
 - [ ] Confirm no new package is required by the integration plan.
 
 **Backend notes:** Owner confirms endpoint shapes before UI integration starts.
-
-**Dummy data:** unchanged.
 
 **Expected result:** A single, agreed integration contract. No code changes beyond docs.
 
@@ -967,8 +970,7 @@ Toggle availability must hide the service publicly. Admin approval changes
 scope change for this request. Do not mark the full step complete until all
 technician service-management requirements are separately verified.
 
-**Dummy data:** services for the demo technician + other technicians' services for
-admin approval.
+**Runtime data:** technician and admin service lists come from the backend APIs.
 
 **Expected result:** Full CRUD/approval interactions, visually complete, with honest
 placeholder feedback.
@@ -977,7 +979,7 @@ placeholder feedback.
 
 - [ ] Delete/reject always require confirmation.
 - [ ] Edit dialog is pre-filled and validates.
-- [ ] Status badges update in local UI state after an action (demo only).
+- [ ] Status badges update only after the backend confirms an action.
 - [ ] Empty state when a technician has no services.
 - [ ] Keyboard accessibility for dialogs and toggles.
 - [x] Admin approve/reject actions require confirmation and persist through the
@@ -1022,8 +1024,8 @@ Never persist, never claim success against a real backend.
 `PATCH /api/bookings/:id/cancel`; server enforces valid transitions and ownership.
 Pay Now is wired in Step 17.
 
-**Dummy data:** bookings covering every status, including one `completed` + `unpaid`
-to show Pay Now and one `cancelled` to prove no actions appear.
+**Runtime data:** action availability and dashboard content are based on each real
+booking's current status and payment status.
 
 **Expected result:** Only valid actions appear for each status, with clear
 confirmation steps.
@@ -1073,7 +1075,8 @@ confirmation steps.
 - Payment pages live under the `(public)` route group (navbar + footer) per
   AGENTS.md §8; access control is still the owner's responsibility.
 
-**Dummy data:** a completed + unpaid booking for the UI state; no fake transaction.
+**Runtime data:** payment state is displayed only after the backend verifies the
+real Stripe session and returns a recorded payment.
 
 **Expected result:** Pay Now, success, and cancel screens that are visually complete
 and ready for the owner's API.
@@ -1094,23 +1097,18 @@ and ready for the owner's API.
 
 **Owner:** AI (UI prep) / OWNER (MongoDB implementation)
 
-**Objective:** Ensure the listing UI can switch from demo filtering to server-side
-querying without redesign.
+**Objective:** Ensure the listing UI uses server-side search/filter/sort without
+introducing local fake records.
 
 **Work**
 
 - [ ] Confirm URL param names: `search`, `category`, `mode`, `sort`, `page`.
 - [ ] Move param parsing into a small helper so the owner can reuse it.
-- [ ] Add **one** documented data-source seam:
-      `getServices(params)` in `src/lib/services-data.ts`. It filters dummy data in
-      this phase and becomes the single place the owner swaps for
-      `GET /api/services`. This is an intentional addition to the structure in
-      AGENTS.md §8 — no other structural changes.
+- [ ] Keep one documented data-source seam using the existing services API helper.
 - [ ] Add result-count and active-filter chips.
 - [ ] Prepare pagination UI shell (optional challenge) without wiring it.
 - [ ] Document the expected server query behaviour and response shape.
-- [ ] Remove the temporary client filter once the owner's API is ready (owner-led
-      integration step).
+- [ ] Do not add a client-side fake-record fallback if the API is unavailable.
 
 **Backend/integration notes:** MongoDB must perform search (title/category), category
 filter, mode filter, and sort (price asc/desc, newest). Client-side `.filter()` is
@@ -1168,42 +1166,24 @@ fail later; prepare an `error` prop message area.
 
 ---
 
-### Step 20 — Dummy / Seed Data Preparation
+### Step 20 — Runtime Data Cleanup
 
-**Owner:** AI (dummy data) / OWNER (real seed scripts)
+**Owner:** AI, only when explicitly requested
 
-**Objective:** Make the live demo look complete and give the owner a seed blueprint.
+**Objective:** Ensure runtime pages show only real BetterAuth/session and backend
+API data, without changing existing database records.
 
 **Work**
 
-- [ ] 3 technicians + 4 customers + 1 admin (8 users) with realistic names, areas,
-      phones, bios, avatar initials.
-- [ ] 15 services covering all 7 categories, mixed prices/durations/modes.
-- [ ] 12 approved + available (so the assignment's 12+ requirement is met), 1
-      pending, 1 rejected, 1 unavailable.
-- [ ] 8 bookings spanning requested, accepted, in-progress, completed+unpaid,
-      completed+paid, rejected, cancelled.
-- [ ] 4 payments linked to completed bookings.
-- [ ] 6 testimonials + platform stats.
-- [ ] At least one technician has multiple approved services and bookings in
-      different statuses, so the examiner can test every flow.
-- [ ] Verify every page shows coherent data (same names/emails across collections).
-- [ ] Document the equivalent JSON shape for the owner's seed script (no script
-      written by the AI).
-- [ ] Add a footer/demo note that data is sample data, and state clearly that it is
-      not real database data.
+- [x] Remove unused frontend fake-record modules.
+- [x] Remove the application seed script and its package command; do not run it.
+- [x] Remove fabricated profile fallbacks and unsupported operational claims.
+- [x] Keep necessary fixtures isolated in test files/directories.
+- [x] Confirm real API errors and empty responses render different states.
+- [x] Search runtime source for fake records and verify removed seed references.
 
-**Expected result:** A complete, consistent demo that an examiner can navigate.
-
-**Testing checklist**
-
-- [ ] Service counts per category are believable.
-- [ ] No orphan references (booking → service → technician email all match).
-- [ ] Payment amounts equal the booking's finalAmount.
-- [ ] No duplicate `_id` values.
-- [ ] Every dashboard looks populated but not absurd.
-
-**Depends on:** Steps 4–18.
+**Expected result:** No fake application records are used at runtime; existing
+database records remain untouched.
 
 ---
 
@@ -1260,7 +1240,7 @@ fail later; prepare an `error` prop message area.
 - [ ] Deploy frontend (Vercel) and backend.
 - [ ] Set production env vars, CORS, BetterAuth trusted origins.
 - [ ] Stripe webhook endpoint + signing secret.
-- [ ] Seed production data; create admin manually.
+- [ ] Use the owner's existing production data; create admin accounts manually.
 - [ ] Test all three roles on the live site.
 - [ ] Fill in admin/technician/customer test credentials, live URL, repo links.
 - [ ] Verify no error on reload of any route and no redirect loop for logged-in users.
@@ -1340,10 +1320,10 @@ fail later; prepare an `error` prop message area.
       set booking `paymentStatus: "paid"` idempotently.
 - [ ] Cancel flow leaves the database unchanged.
 
-### 5.7 Seed & deployment
+### 5.7 Existing Data & Deployment
 
-- [ ] Seed: 2+ technicians, 12+ approved services, bookings in different statuses,
-      customers, manual admin.
+- [ ] Verify owner-provisioned users, services, bookings, and payments without
+      creating seed records.
 - [ ] Deploy backend and frontend; production env vars; CORS; trusted origins.
 - [ ] Stripe webhook (if implemented) configured on the deployed URL.
 - [ ] 12+ meaningful server commits, 20+ meaningful client commits.
@@ -1389,24 +1369,13 @@ explicit owner request and never before Steps 1–22 are complete.
 
 ---
 
-## 7. Dummy Data Blueprint
+## 7. Runtime Data Policy
 
-| File | Contents |
-| --- | --- |
-| `src/data/categories.ts` | 7 categories: name, slug, icon key, short description, tint |
-| `src/data/users.ts` | 3 technicians, 4 customers, 1 admin; 24-char hex ids; names, emails, phones, areas, bios. The Joined date column uses BetterAuth's built-in `createdAt`; it is not a custom field. |
-| `src/data/services.ts` | 15 services: 12 approved+available, 1 pending, 1 rejected, 1 unavailable; all 7 categories |
-| `src/data/bookings.ts` | 8 bookings covering all 6 statuses; linked service/technician/customer emails |
-| `src/data/payments.ts` | 4 payments linked to completed bookings; Stripe-like ids |
-| `src/data/testimonials.ts` | 6 realistic testimonials |
-| `src/data/stats.ts` | Platform stats (technicians, jobs, satisfaction) |
-| `src/data/demo-session.ts` | Demo customer/technician/admin for display only |
-
-Consistency rules: every booking's service/technician data matches its service;
-payment amount equals booking `finalAmount`; `_id`s are unique 24-char hex;
-dates are ISO strings; prices are USD. Every file starts with the standard banner
-`// ⚠️ DUMMY DATA for UI development only. Replace with API data.` Images are local
-placeholders and avatars are initials-based; no external image dependency.
+Runtime user, service, booking, payment, profile, and dashboard data must come from
+the active BetterAuth session or the existing backend API. No application seed or
+demo records are maintained. Test fixtures remain isolated under test directories;
+they are not runtime application data. Static category/status constants and visual
+loading skeletons are configuration/UI states, not records.
 
 ---
 
@@ -1452,7 +1421,7 @@ Dashboard (sidebar + topbar, no public footer)
 - [ ] Responsive at 360 / 768 / 1024 / 1440 px.
 - [ ] Loading, empty, and error states present where data appears.
 - [ ] Design tokens and shared components reused.
-- [ ] Dummy data labelled and isolated.
+- [ ] Runtime records are API/session sourced; test fixtures stay isolated.
 - [ ] Backend dependencies written down, never faked.
 - [ ] Roadmap checklist updated for this step only.
 - [ ] Stop and wait for approval.
@@ -1472,7 +1441,7 @@ Dashboard (sidebar + topbar, no public footer)
 | Technician dashboard | ⏳ Not started | Step 9 |
 | Admin dashboard | ⏳ Not started | Step 10 |
 | Profile UI | ⏳ Not started | Step 11 |
-| Dummy data | ⏳ Not started | Step 20 (incremental from Step 4) |
+| Runtime data cleanup | ✅ Complete | Step 20; runtime uses BetterAuth/API data, no app seed script |
 | Backend foundation | 👤 Owner | Not started |
 | MongoDB | 👤 Owner | Not started |
 | BetterAuth | 👤 Owner | Package installed, unused |
@@ -1480,7 +1449,7 @@ Dashboard (sidebar + topbar, no public footer)
 | APIs | 👤 Owner | Not started |
 | Stripe | 👤 Owner | Not started |
 | ImgBB | 👤 Owner | Not started |
-| Seed data | 👤 Owner | Blueprint in §7 |
+| Seed data | 👤 Owner | No seed script or runtime sample records are maintained |
 | Deployment | 👤 Owner | Not started |
 | README | ⏳ Not started | AI rewrite in Step 22; still the default Next.js README |
 | Optional enhancements | ⏸ Not approved | Not required; see §6 |

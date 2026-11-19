@@ -112,7 +112,11 @@ export default function AdminDashboardPage() {
         prev.map((row) => (row._id === updated._id ? { ...row, ...updated } : row))
       );
       if (approvalStatus === "approved") {
-        toast.success(`Service "${service.title}" approved and published.`);
+        toast.success(
+          updated.isAvailable
+            ? `Service "${service.title}" approved and published.`
+            : `Service "${service.title}" approved. It remains hidden while unavailable.`
+        );
       } else {
         toast.success(`Service "${service.title}" rejected.`);
       }
@@ -185,35 +189,6 @@ export default function AdminDashboardPage() {
           <div className="h-64 animate-pulse rounded-xl border border-slate-200 bg-white lg:col-span-2" />
           <div className="h-64 animate-pulse rounded-xl border border-slate-200 bg-white" />
         </div>
-
-        <ConfirmDialog
-          isOpen={Boolean(serviceDecision)}
-          onClose={() => setServiceDecision(null)}
-          onConfirm={confirmServiceDecision}
-          title={
-            serviceDecision?.approvalStatus === "approved"
-              ? "Approve this service?"
-              : "Reject this service?"
-          }
-          description={
-            serviceDecision
-              ? `"${serviceDecision.service.title}" will be ${
-                  serviceDecision.approvalStatus === "approved"
-                    ? "visible to customers"
-                    : "marked as rejected"
-                }.`
-              : ""
-          }
-          confirmLabel={
-            serviceDecision?.approvalStatus === "approved" ? "Approve" : "Reject"
-          }
-          variant={
-            serviceDecision?.approvalStatus === "approved" ? "success" : "danger"
-          }
-          isLoading={Boolean(
-            serviceDecision && busyServiceId === serviceDecision.service._id
-          )}
-        />
       </div>
     );
   }
@@ -317,7 +292,7 @@ export default function AdminDashboardPage() {
         <StatCard
           title="Total Technicians"
           value={totalTechnicians}
-          subtitle="Verified provider accounts"
+          subtitle="Technician accounts"
           icon={ShieldCheck}
           iconClassName="bg-indigo-50 text-indigo-700"
         />
@@ -530,6 +505,37 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(serviceDecision)}
+        onClose={() => setServiceDecision(null)}
+        onConfirm={confirmServiceDecision}
+        title={
+          serviceDecision?.approvalStatus === "approved"
+            ? "Approve this service?"
+            : "Reject this service?"
+        }
+        description={
+          serviceDecision
+            ? `"${serviceDecision.service.title}" will be ${
+                serviceDecision.approvalStatus === "approved"
+                  ? serviceDecision.service.isAvailable
+                    ? "approved and visible to customers"
+                    : "approved but remain hidden until it is available"
+                  : "marked as rejected"
+              }.`
+            : ""
+        }
+        confirmLabel={
+          serviceDecision?.approvalStatus === "approved" ? "Approve" : "Reject"
+        }
+        variant={
+          serviceDecision?.approvalStatus === "approved" ? "success" : "danger"
+        }
+        isLoading={Boolean(
+          serviceDecision && busyServiceId === serviceDecision.service._id
+        )}
+      />
     </div>
   );
 }

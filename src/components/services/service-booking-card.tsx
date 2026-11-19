@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Service } from "@/types";
 import { formatCurrency } from "@/lib/format";
@@ -18,40 +19,60 @@ interface ServiceBookingCardProps {
   service: Service;
 }
 
+function getLocalDateInputValue() {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
 export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
   const router = useRouter();
-  const { user } = useCurrentUser();
+  const { user, isPending: isSessionPending } = useCurrentUser();
+  const today = getLocalDateInputValue();
 
   const [phoneInput, setPhoneInput] = React.useState<string | null>(null);
   const [addressInput, setAddressInput] = React.useState<string | null>(null);
   const [preferredDate, setPreferredDate] = React.useState("");
   const [problemDescription, setProblemDescription] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [bookingSubmitted, setBookingSubmitted] = React.useState(false);
 
   // Profile values pre-fill the form until the customer edits them.
   const customerPhone = phoneInput ?? user?.phone ?? "";
-  const customerAddress = addressInput ?? user?.area ?? "";
+  const customerAddress = addressInput ?? "";
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSessionPending) {
+      return;
+    }
+
     if (!user) {
-      router.push(`/sign-in?redirect=/services/${service._id}`);
+      router.push(
+        `/sign-in?callbackUrl=${encodeURIComponent(`/services/${service._id}`)}`
+      );
       return;
     }
 
     if (user.role !== "customer") {
-      toast.error("Only registered customers can send repair requests.");
+      toast.error("Only customers can request a repair");
       return;
     }
 
-    if (!preferredDate || !problemDescription.trim() || !customerAddress.trim()) {
+    if (!customerPhone.trim() || !customerAddress.trim() || !preferredDate) {
       toast.error("Please fill in all required booking fields.");
       return;
     }
 
-    if (new Date(preferredDate) < new Date(new Date().toDateString())) {
+    if (preferredDate < today) {
       toast.error("Please choose today or a future date for the visit.");
+      return;
+    }
+
+    if (problemDescription.trim().length < 20) {
+      toast.error("Problem description must be at least 20 characters.");
       return;
     }
 
@@ -60,7 +81,7 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
     try {
       // The server owns price, technician, status and payment status; it reads
       // them from the service document and the BetterAuth session.
-      const result = await createBooking({
+      await createBooking({
         serviceId: service._id,
         customerPhone,
         address: customerAddress,
@@ -68,11 +89,8 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
         problemDescription,
       });
 
-      toast.success(
-        result.message ||
-          "Repair request sent! The technician will review and update the status shortly."
-      );
-      router.push("/dashboard/customer/bookings");
+      setBookingSubmitted(true);
+      toast.success("Repair request sent successfully.");
     } catch (error) {
       toast.error(
         error instanceof ApiError
@@ -96,7 +114,7 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
           </span>
         </div>
         <p className="text-xs text-slate-500 mt-1">
-          No upfront payment required. Pay through Stripe after the technician finishes the repair.
+          Payment is requested after the technician marks the repair complete.
         </p>
       </div>
 
@@ -108,14 +126,55 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
             <span>Booking Restricted</span>
           </div>
           <p>
-            You are signed in as a <strong>{user.role}</strong>. Only customer accounts can book repair services. Please sign in with a customer account to request this service.
+            Only customers can request a repair. You are signed in as a{" "}
+            <strong>{user.role}</strong>.
           </p>
         </div>
+      ) : bookingSubmitted ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <p className="font-semibold">Your repair request was sent.</p>
+          <Link
+            href="/dashboard/customer/bookings"
+            className="mt-2 inline-flex font-semibold text-teal-800 underline underline-offset-2"
+          >
+            View My Bookings
+          </Link>
+        </div>
       ) : (
-        <form onSubmit={handleBookingSubmit} className="space-y-4">
+        <form onSubmit={handleBookingSubmit} noValidate className="space-y-4">
           <h3 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-2">
             Send Repair Request
           </h3>
+
+          {user && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="reqName" className="text-xs font-semibold text-slate-700">
+                  Name
+                </Label>
+                <Input
+                  id="reqName"
+                  value={user.name}
+                  readOnly
+                  aria-readonly="true"
+                  className="h-10 bg-slate-50 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="reqEmail" className="text-xs font-semibold text-slate-700">
+                  Email
+                </Label>
+                <Input
+                  id="reqEmail"
+                  type="email"
+                  value={user.email}
+                  readOnly
+                  aria-readonly="true"
+                  className="h-10 bg-slate-50 text-xs"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Preferred Date */}
           <div className="space-y-1">
@@ -125,6 +184,7 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
             <Input
               id="reqDate"
               type="date"
+              min={today}
               value={preferredDate}
               onChange={(e) => setPreferredDate(e.target.value)}
               required
@@ -172,6 +232,7 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
             <textarea
               id="reqDesc"
               rows={3}
+              minLength={20}
               placeholder="Describe what's wrong with your device or appliance..."
               value={problemDescription}
               onChange={(e) => setProblemDescription(e.target.value)}
@@ -182,10 +243,12 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
 
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isSessionPending}
             className="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold h-11 text-sm shadow-xs"
           >
-            {isSubmitting ? (
+            {isSessionPending ? (
+              "Checking your account…"
+            ) : isSubmitting ? (
               "Sending Request…"
             ) : user ? (
               "Confirm & Send Request"

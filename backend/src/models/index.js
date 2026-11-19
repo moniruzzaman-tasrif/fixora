@@ -32,7 +32,7 @@ export const Booking = mongoose.model("Booking", new mongoose.Schema({
   finalAmount: Number,
   paymentStatus: { type: String, enum: ["unpaid","paid"], default: "unpaid" },
   createdAt: { type: Date, default: Date.now }
-}));
+}), "booking");
 export const Payment = mongoose.model("Payment", new mongoose.Schema({
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: "Booking" },
   serviceTitle: String,

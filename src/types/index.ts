@@ -25,6 +25,13 @@ export type ServiceMode = "Home Visit" | "Shop Drop-off";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
+export interface TechnicianProfile {
+  name: string;
+  image?: string;
+  area?: string;
+  bio?: string;
+}
+
 export interface Service {
   _id: string;
   title: string;
@@ -37,6 +44,7 @@ export interface Service {
   serviceArea: string;
   technicianName: string;
   technicianEmail: string;
+  technicianProfile?: TechnicianProfile | null;
   approvalStatus: ApprovalStatus;
   isAvailable: boolean;
   createdAt: string;

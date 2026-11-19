@@ -16,7 +16,8 @@ import { signIn } from "@/lib/auth-client";
 export function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl");
+  const callbackUrl =
+    searchParams.get("callbackUrl") ?? searchParams.get("redirect");
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -63,17 +64,23 @@ export function SignInForm() {
         return;
       }
 
-      // The role is read back from the database through the BetterAuth session.
-      // Fall back to the customer dashboard only if the field is unexpected.
-      const role =
-        data?.user && isUserRole(data.user.role) ? data.user.role : "customer";
+      // Route only when BetterAuth returns a recognized role; never invent one.
+      if (!data?.user || !isUserRole(data.user.role)) {
+        toast.error(
+          "Your account does not have a valid Fixora role. Contact an administrator."
+        );
+        return;
+      }
+      const role = data.user.role;
 
       toast.success("Signed in successfully! Welcome back.");
 
       // Only allow internal paths so a crafted `callbackUrl` cannot redirect
       // the browser to another site.
       const destination =
-        callbackUrl && callbackUrl.startsWith("/")
+        callbackUrl &&
+        callbackUrl.startsWith("/") &&
+        !callbackUrl.startsWith("//")
           ? callbackUrl
           : ROLE_DASHBOARD_ROUTES[role];
 

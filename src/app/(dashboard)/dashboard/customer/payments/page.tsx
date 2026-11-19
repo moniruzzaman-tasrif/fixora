@@ -68,7 +68,7 @@ export default function CustomerPaymentsPage() {
     <div className="space-y-6">
       <PageHeader
         heading="Payment History"
-        description="View records and Stripe transaction receipts for all completed repair services."
+        description="View payment records for completed repair services."
       >
         <Button
           variant="outline"
@@ -98,14 +98,14 @@ export default function CustomerPaymentsPage() {
             <StatCard
               title="Total Paid to Technicians"
               value={formatCurrency(totalSpent)}
-              subtitle="Processed securely through Stripe Checkout"
+              subtitle="Total of recorded payments"
               icon={CreditCard}
               iconClassName="bg-teal-50 text-teal-700"
             />
             <StatCard
               title="Completed Transactions"
               value={payments.length}
-              subtitle="Pay-after-service guarantee verified"
+              subtitle="Payments recorded for your account"
               icon={Receipt}
               iconClassName="bg-emerald-50 text-emerald-600"
             />

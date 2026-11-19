@@ -208,7 +208,7 @@ export function SignUpForm() {
           id="name"
           type="text"
           autoComplete="name"
-          placeholder="e.g. Tanvir Hasan"
+          placeholder="Your name"
           value={name}
           onChange={(e) => {
             setName(e.target.value);
@@ -249,7 +249,7 @@ export function SignUpForm() {
             type="tel"
             inputMode="tel"
             autoComplete="tel"
-            placeholder="01712345678"
+            placeholder="Enter your phone number"
             value={phone}
             onChange={(e) => {
               setPhone(e.target.value);
@@ -332,8 +332,7 @@ export function SignUpForm() {
 
       <p className="text-xs text-slate-500 leading-relaxed">
         By registering, you agree to Fixora&apos;s Terms of Service and Privacy
-        Policy. Payment is processed securely via Stripe only after service
-        completion.
+        Policy.
       </p>
 
       <Button

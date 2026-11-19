@@ -19,19 +19,16 @@ export function RoleSelector({
   const roles: {
     id: SelectableRole;
     title: string;
-    // subtitle: string;
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
     {
       id: "customer",
       title: "Customer",
-      // subtitle: "Browse certified technicians, book repairs & pay after completion.",
       icon: User,
     },
     {
       id: "technician",
       title: "Technician",
-      // subtitle: "List repair services, accept job requests & grow your business.",
       icon: Wrench,
     },
   ];

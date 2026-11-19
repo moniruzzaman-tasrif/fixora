@@ -152,8 +152,8 @@ export default function CustomerDashboardPage() {
                     {pendingPayment === 1 ? "" : "s"} awaiting payment!
                   </p>
                   <p className="text-xs text-amber-700">
-                    Your technician has finished the work. Please review and pay
-                    securely via Stripe.
+                    Your technician has marked the work complete. Review the
+                    final amount before paying.
                   </p>
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function CustomerDashboardPage() {
             <StatCard
               title="Completed Jobs"
               value={completedJobs}
-              subtitle="Successfully delivered & verified"
+              subtitle="Jobs marked complete"
               icon={CheckCircle2}
               iconClassName="bg-emerald-50 text-emerald-600"
             />
@@ -201,7 +201,7 @@ export default function CustomerDashboardPage() {
             <EmptyState
               icon={Wrench}
               title="No repair requests yet"
-              description="Browse verified technicians and send your first repair request. You only pay after the job is completed."
+              description="Browse available services and send your first repair request. Payment is due after the job is completed."
               actionLabel="Browse Repair Services"
               actionHref="/services"
             />

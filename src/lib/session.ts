@@ -31,15 +31,20 @@ function toIsoString(value: Date | string | null | undefined) {
 }
 
 /** Maps the BetterAuth session user onto the app's `User` shape. */
-export function toAppUser(sessionUser: SessionUserShape): User {
+export function toAppUser(sessionUser: SessionUserShape): User | null {
+  const name = sessionUser.name?.trim();
+  const email = sessionUser.email?.trim();
+
+  if (!sessionUser.id.trim() || !name || !email || !isUserRole(sessionUser.role)) {
+    return null;
+  }
+
   return {
     _id: sessionUser.id,
-    name: sessionUser.name?.trim() || "Fixora User",
-    email: sessionUser.email ?? "",
+    name,
+    email,
     image: sessionUser.image ?? undefined,
-    // Public sign-up can only create customer/technician; admins are created
-    // manually. Anything unexpected falls back to the safest role.
-    role: isUserRole(sessionUser.role) ? sessionUser.role : "customer",
+    role: sessionUser.role,
     phone: sessionUser.phone ?? undefined,
     area: sessionUser.area ?? undefined,
     bio: sessionUser.bio ?? undefined,

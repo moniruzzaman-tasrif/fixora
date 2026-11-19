@@ -95,7 +95,7 @@ export default function TechnicianRequestsPage() {
   ) => {
     setBusyBookingId(booking._id);
     try {
-      const { booking: updated } = await updateBookingStatus(
+      const updated = await updateBookingStatus(
         booking._id,
         status,
         finalAmount

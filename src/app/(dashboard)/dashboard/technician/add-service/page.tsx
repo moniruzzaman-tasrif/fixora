@@ -21,8 +21,6 @@ export default function AddServicePage() {
 
   // Read-only technician info taken from the BetterAuth session.
   const { user } = useCurrentUser();
-  const technicianName = user?.name ?? "—";
-  const technicianEmail = user?.email ?? "—";
 
   const [title, setTitle] = React.useState("");
   const [category, setCategory] = React.useState<ServiceCategory>("Smartphone");
@@ -120,35 +118,36 @@ export default function AddServicePage() {
     <div className="space-y-6 max-w-4xl">
       <PageHeader
         heading="Add a New Repair Service"
-        description="Create a listing for your repair expertise. Newly added services remain pending until verified by an admin."
+        description="Create a listing for your repair expertise. New services remain pending until approved by an administrator."
       />
 
       <Card className="border border-slate-200/90 shadow-xs">
         <CardContent className="p-6 sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Technician Info (Read-Only) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <div>
-                <Label className="text-xs text-slate-500">
-                  Technician Provider
-                </Label>
-                <p className="text-sm font-bold text-slate-800 mt-0.5">
-                  {technicianName}
+            {user && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <Label className="text-xs text-slate-500">
+                    Technician Provider
+                  </Label>
+                  <p className="text-sm font-bold text-slate-800 mt-0.5">
+                    {user.name}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs text-slate-500">
+                    Registered Account Email
+                  </Label>
+                  <p className="text-sm font-semibold text-slate-700 mt-0.5">
+                    {user.email}
+                  </p>
+                </div>
+                <p className="sm:col-span-2 text-[11px] text-slate-500">
+                  This identity comes from your active BetterAuth session.
                 </p>
               </div>
-              <div>
-                <Label className="text-xs text-slate-500">
-                  Registered Account Email
-                </Label>
-                <p className="text-sm font-semibold text-slate-700 mt-0.5">
-                  {technicianEmail}
-                </p>
-              </div>
-              <p className="sm:col-span-2 text-[11px] text-slate-500">
-                Copied automatically from your technician account and stored on
-                the service as the owner.
-              </p>
-            </div>
+            )}
 
             {/* Service Title */}
             <div className="space-y-1.5">
@@ -289,7 +288,7 @@ export default function AddServicePage() {
               <textarea
                 id="description"
                 rows={4}
-                placeholder="Describe what is included in the repair (parts, diagnostic process, warranty periods, etc.)"
+                placeholder="Describe the repair service, process, and any included parts."
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);

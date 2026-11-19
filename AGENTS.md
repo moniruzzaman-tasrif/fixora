@@ -138,20 +138,20 @@ packages and small hand-written components.
    skeletons, charts drawn with CSS/SVG.
 3. Responsive layouts (mobile → tablet → desktop).
 4. Loading, error, and empty states; `not-found.tsx`, `error.tsx`, `loading.tsx`.
-5. Realistic **dummy data**, clearly separated in `src/data/`.
-6. Frontend-only interactions: modals, dropdowns, mobile nav, tabs, sidebar toggle,
-   client-side filtering/sorting of dummy data, toasts, form validation.
-7. Static dashboard statistics and chart layouts.
+5. Frontend-only interactions: modals, dropdowns, mobile nav, tabs, sidebar toggle,
+   API-backed filtering/sorting, toasts, and form validation.
+6. Dashboard statistics and chart layouts derived from real API responses.
 8. Payment **UI** (Pay Now, success, cancel pages).
 9. Documentation: this file, `IMPLEMENTATION_ROADMAP.md`, and any doc the owner
    explicitly requests.
-10. Preparing clean seams so the owner can plug APIs in later.
+10. Preparing clean seams around the existing API integrations.
 
 ### The AI agent must NOT implement
 
 1. MongoDB connection, schemas, queries, or seed scripts.
 2. Express server, backend routes, or any real API.
-3. Fetching real data or sending data to a backend.
+3. Creating new backend endpoints or data access systems. Frontend pages may
+   consume the existing API contract and helpers.
 4. BetterAuth configuration, sign-up/sign-in integration, session handling.
 5. JWT generation/verification, `verifyToken` / `requireRole` middleware.
 6. Server-side authorization, role checks, or ownership checks.
@@ -159,7 +159,9 @@ packages and small hand-written components.
 8. Fake auth, fake API responses, mock servers, or client-side role security.
 9. Deployment configuration or production secrets.
 
-**UI with dummy data is fine. Fake security or fake backend behavior is not.**
+**Runtime application pages must not use fake records or fabricated user/session
+data. Test fixtures are permitted only in test files and must not be imported by the
+application.**
 
 If a feature needs an API, build the UI and document the exact endpoint the owner
 must implement. Never "make the button work" by inventing a backend.
@@ -281,7 +283,6 @@ src/
 │   ├── services/      # service-card, service-grid, service-filters, request-form
 │   ├── auth/          # sign-in-form, sign-up-form, role-selector, password-field
 │   └── dashboard/     # customer/*, technician/*, admin/*, profile-form
-├── data/              # ⚠️ DUMMY DATA ONLY — clearly labelled
 ├── lib/               # utils.ts, constants.ts, format.ts, validations.ts
 └── types/             # index.ts — shared TypeScript types
 ```
@@ -417,34 +418,26 @@ One `<StatusBadge status={...} />` component, one color map in `src/lib/constant
 
 The assignment requires dashboard charts. Do **not** install a chart library unless
 the owner asks. Build small, readable CSS/SVG charts (`MiniBarChart`, simple donut)
-from dummy data. They are presentational UI only.
+from real API results, and show empty states when the API returns no records.
 
----
+## 10. Application Data Rules
 
-## 10. Dummy Data Rules
-
-- All dummy data lives in `src/data/`, one file per domain:
-  `services.ts`, `bookings.ts`, `payments.ts`, `users.ts`, `categories.ts`,
-  `testimonials.ts`, `stats.ts`.
-- Every file starts with a banner comment:
-  `// ⚠️ DUMMY DATA for UI development only. Replace with API data.`
-- Mirror the real database shape exactly (see §11) so swapping is mechanical.
-- Use 24-character hex strings for `_id` values so links and keys behave like
-  MongoDB ObjectIds.
-- Dates are ISO strings (`"2026-11-10T09:00:00.000Z"`) — JSON-friendly.
-- Use one `Service` type, one `Booking` type, etc. from `src/types`.
-- Recommended seed content: 3 technicians, 8 users total, 12+ services across all
-  7 categories, 6–8 bookings spanning every status, 4 payments, 6 testimonials.
-- Prices are **USD** (assignment uses USD). Format with one helper
-  (`formatCurrency`) — never hand-write `$` strings in components.
-- Images: use local placeholder assets in `public/` (category SVGs) and
-  initials-based avatars. Do **not** depend on random external image URLs that can
-  break. When the owner integrates ImgBB, only the image URL changes.
-- The signed-in user and role always come from the BetterAuth session through
-  `useCurrentUser()` (`src/lib/session.ts`). Never hardcode or fake a session user,
-  and never treat dummy `src/data/users.ts` rows as the current user.
-- Do not build a fake login/session/role-guard system around dummy data. Client-side
-  redirects in `DashboardShell` are UX only; the server stays authoritative.
+- Runtime user, service, booking, payment, profile, and dashboard data must come
+  from the active BetterAuth session or the existing backend API.
+- Do not add dummy, sample, mock, placeholder, or hardcoded application records,
+  fake sessions, or fabricated dashboard statistics.
+- Keep test fixtures inside test files/directories. Never import test fixtures into
+  runtime application code or remove necessary test infrastructure as part of data
+  cleanup.
+- When a real API returns no records, show an honest empty state. Distinguish an
+  empty response from a request error.
+- Categories, status names, route maps, formatting constants, skeletons, and input
+  examples are UI configuration or affordances, not application records.
+- The signed-in user and role come from the active BetterAuth session through
+  `useCurrentUser()` (`src/lib/session.ts`). If required session fields are absent
+  or invalid, do not invent replacement identity, email, or role values.
+- Do not build a fake login/session/role-guard system. Client-side dashboard
+  redirects are UX only; the server remains authoritative.
 
 ---
 
@@ -585,36 +578,31 @@ with clearly marked integration TODOs.
 
 ## 14. Frontend Integration Seams
 
-When building UI that will later call APIs:
+When building UI that calls APIs:
 
-- Keep data access isolated: pages/components receive typed props; dummy imports are
-  easy to replace. Do not scatter `dummyServices` imports deep inside widgets.
-- Prepare realistic **loading**, **empty**, and **error** states for each data area
-  even while using dummy data (Step 19 hardens them).
+- Keep data access isolated: pages/components receive typed props and use the
+  existing API helpers rather than importing records.
+- Provide **loading**, **empty**, and **error** states for each data area.
 - Forms: controlled inputs + a small `src/lib/validations.ts`; no form library.
-  Buttons show pending/disabled UI states. Submit handlers contain a clearly marked
-  `// TODO(owner): POST to /api/...` and a temporary toast, nothing more.
+  Buttons show pending/disabled UI states and submit to the existing API contract.
 - Never invent mock fetch layers, JSON servers, or MSW.
 - Search/filter/sort UI must read/write URL query params (so the owner can later
-  perform them in MongoDB). Filtering dummy data client-side is acceptable for the
-  UI demo, but must be labelled as temporary.
+  perform them in MongoDB). Do not substitute local fake records for API results.
 
 ---
 
 ## 15. UI Content & Copy Guidelines
 
 - Friendly, professional, concise. No lorem ipsum.
-- Homepage headline direction: "Broken device? Get it fixed by verified technicians."
-- Trust points: verified technicians, transparent pricing, pay after completion,
-  tracked job status, service warranty.
+- Use accurate copy about approved service listings, booking status, and payment
+  timing. Do not claim technician background checks, certifications, warranties,
+  ratings, activity totals, or platform scale unless real data supports the claim.
 - Use realistic Dhaka/Bangladesh areas (Dhanmondi, Mirpur, Uttara, Banani, Gulshan,
   Mohammadpur) and USD prices.
 - Categories: Smartphone, Laptop & PC, AC, Refrigerator, TV, Washing Machine,
   Electrical.
-- Footer: Fixora logo, tagline, quick links, popular categories, email/phone/address,
-  social icons (use the current **X** logo, not the old Twitter bird), copyright.
-- Include a small, honest "demo data" cue where content is clearly sample data
-  (e.g. a footer note on the UI phase) — never claim fake activity is real.
+- Footer: Fixora logo, tagline, quick links, categories, and copyright. Add contact
+  details only when they are verified project contact information.
 - Accessibility: semantic landmarks, `aria-label` on icon buttons, visible focus,
   labels tied to inputs, alt text, keyboard-operable menus/modals.
 
@@ -633,7 +621,7 @@ When building UI that will later call APIs:
 - Constants (categories, statuses, routes, nav items) live in `src/lib/constants.ts`.
 - Dates/currency: one formatter each in `src/lib/format.ts`.
 - Comments explain *why*, not *what*. Mark integration points with
-  `// TODO(owner): ...` and dummy data with the standard banner.
+  `// TODO(owner): ...`. Do not add runtime fake-data banners or fake records.
 - Do not edit `src/components/ui/*` generated files unless a genuine bug requires it.
 - Keep files under ~200 lines where practical; split sections into components.
 - Run `npx tsc --noEmit` and `npm run lint` after each step.
@@ -645,7 +633,7 @@ When building UI that will later call APIs:
   pattern already used in `src/app/layout.tsx` (`LayoutProps<"/">`).
 - `cacheComponents: true` and `partialPrefetching: true` are enabled. Uncached data
   in a server component must be handled with `<Suspense>` / `"use cache"` per the
-  bundled docs. Our dummy data is static, so this mostly matters during integration.
+  bundled docs.
 - React Compiler is on: follow the Rules of React, avoid manual memo hacks.
 - Tailwind v4 is CSS-first: tokens live in `globals.css` (`@theme`), there is no
   `tailwind.config.js`.
@@ -691,7 +679,8 @@ Before writing code:
 5. Confirm the frontend-only boundary. If the task requires backend work, stop and
    explain that it belongs to the owner, then offer the UI/documentation portion.
 6. Reuse the design tokens and shared components; do not invent a parallel style.
-7. Keep dummy data isolated and honest.
+7. Keep runtime records sourced from the real session/API; keep test fixtures
+   isolated from the application.
 8. Finish with verification, a short beginner-friendly explanation, and a checklist
    update. Then stop.
 
@@ -707,7 +696,8 @@ clearly, keep it separate from frontend steps, and never silently mix the two.
 - Responsive at 360 / 768 / 1024 / 1440 px.
 - Loading, empty, and error states exist where data is displayed.
 - Colors, typography, spacing, badges, and buttons match the design system.
-- Dummy data is separated, typed, and clearly labelled.
+- Application records come from the real session/API; empty and error states are
+  distinct, and test fixtures remain isolated.
 - Backend dependencies are documented, not faked.
 - `IMPLEMENTATION_ROADMAP.md` checklist is updated for that step only.
 - The owner receives: changed files, how to test, and what is still pending.

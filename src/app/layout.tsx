@@ -12,7 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Fixora — Your Home, Our Responsibility",
   description:
-    "On-demand smart device & home appliance repair service booking platform connecting you with verified technicians.",
+    "Browse repair service listings for smart devices and home appliances, request a repair, and track its progress.",
   icons: {
     icon: "/favicon.ico",
   },

@@ -136,7 +136,7 @@ export default function MyServicesPage() {
         ? await uploadImage(editImageFile)
         : editingService.image;
 
-      const { service: updated } = await updateService(editingService._id, {
+      const updated = await updateService(editingService._id, {
         title: editTitle.trim(),
         category: editCategory,
         description: editDescription.trim(),
@@ -173,7 +173,7 @@ export default function MyServicesPage() {
     setBusyServiceId(service._id);
 
     try {
-      const { service: updated } = await setServiceAvailability(
+      const updated = await setServiceAvailability(
         service._id,
         nextState
       );

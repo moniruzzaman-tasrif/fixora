@@ -11,7 +11,7 @@ import { SignUpForm } from "@/components/auth/sign-up-form";
 export const metadata: Metadata = {
   title: "Create Account — Fixora",
   description:
-    "Join Fixora as a customer to book certified repairs or as a technician to manage repair jobs.",
+    "Create a Fixora account to request repairs or manage technician services.",
 };
 
 export default function SignUpPage() {
@@ -22,7 +22,7 @@ export default function SignUpPage() {
           Create Your Fixora Account
         </CardTitle>
         <CardDescription className="text-sm text-slate-500">
-          Join thousands of satisfied homeowners and verified technicians
+          Create an account to request repairs or offer technician services
         </CardDescription>
       </CardHeader>
 

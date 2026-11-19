@@ -3,7 +3,7 @@ import { NavItem, UserRole } from "@/types";
 export const APP_NAME = "Fixora";
 export const APP_TAGLINE = "Your Home, Our Responsibility.";
 export const APP_DESCRIPTION =
-  "Fixora connects you with verified repair technicians for smartphones, laptops, ACs, refrigerators, TVs, washing machines, and electrical appliances.";
+  "Browse repair service listings for smartphones, laptops, ACs, refrigerators, TVs, washing machines, and electrical appliances.";
 
 export const PUBLIC_NAV_ITEMS: NavItem[] = [
   { title: "Home", href: "/" },

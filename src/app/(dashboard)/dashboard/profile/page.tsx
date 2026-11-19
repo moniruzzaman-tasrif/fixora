@@ -290,7 +290,7 @@ export default function ProfilePage() {
                       id="name"
                       value={values.name}
                       onChange={(e) => update("name", e.target.value)}
-                      placeholder="e.g. Rahim Ahmed"
+                      placeholder="Your name"
                       className="pl-9 h-10 text-sm bg-white border-slate-200 focus-visible:ring-teal-600"
                       required
                     />

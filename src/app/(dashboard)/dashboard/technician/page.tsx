@@ -109,7 +109,6 @@ export default function TechnicianDashboardPage() {
   }, [services]);
 
   const recentRequests = bookings.slice(0, 4);
-  const displayName = user?.name ?? "Technician";
 
   if (isLoading) {
     return (
@@ -163,7 +162,11 @@ export default function TechnicianDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         heading="Technician Operations"
-        description={`Welcome back, ${displayName}. Manage your repair listings and incoming device bookings.`}
+        description={
+          user?.name
+            ? `Welcome back, ${user.name}. Manage your repair listings and incoming bookings.`
+            : "Manage your repair listings and incoming bookings."
+        }
       >
         <Link href="/dashboard/technician/add-service">
           <Button className="bg-teal-700 hover:bg-teal-800 text-white font-semibold gap-2 shadow-xs">

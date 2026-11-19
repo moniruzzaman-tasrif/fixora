@@ -121,7 +121,9 @@ export default function AdminServicesPage() {
 
       toast.success(
         approvalStatus === "approved"
-          ? `Service "${service.title}" approved. It is now visible to customers.`
+          ? updated.isAvailable
+            ? `Service "${service.title}" approved and visible to customers.`
+            : `Service "${service.title}" approved. It remains hidden while unavailable.`
           : `Service "${service.title}" rejected.`
       );
       setServiceDecision(null);
@@ -574,7 +576,9 @@ export default function AdminServicesPage() {
           serviceDecision
             ? `"${serviceDecision.service.title}" will be ${
                 serviceDecision.approvalStatus === "approved"
-                  ? "visible to customers"
+                  ? serviceDecision.service.isAvailable
+                    ? "approved and visible to customers"
+                    : "approved but remain hidden until it is available"
                   : "marked as rejected"
               }.`
             : ""

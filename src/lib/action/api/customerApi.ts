@@ -17,7 +17,7 @@ export function getMyBookings(): Promise<Booking[]> {
 /** Creates a request; the server fills price/technician/status from the DB. */
 export function createBooking(
   input: CreateBookingInput
-): Promise<{ success: boolean; message: string; booking: Booking }> {
+): Promise<Booking> {
   return apiRequest("/booking", {
     method: "POST",
     body: JSON.stringify(input),
@@ -27,14 +27,14 @@ export function createBooking(
 /** Cancels a `requested` booking owned by the signed-in customer. */
 export function cancelBooking(
   bookingId: string
-): Promise<{ success: boolean; message: string; booking: Booking }> {
+): Promise<Booking> {
   return apiRequest(`/booking/${bookingId}/cancel`, { method: "PATCH" });
 }
 
 /** Starts a Stripe Checkout Session and returns its hosted URL. */
 export function startCheckout(
   bookingId: string
-): Promise<{ success: boolean; url: string; sessionId: string }> {
+): Promise<{ url: string; sessionId: string }> {
   return apiRequest("/payments/create-checkout-session", {
     method: "POST",
     body: JSON.stringify({ bookingId }),
