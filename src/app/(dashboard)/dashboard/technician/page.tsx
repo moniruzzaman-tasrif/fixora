@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 
 export default function TechnicianDashboardPage() {
-  const { user } = useCurrentUser();
+  const { user, isPending } = useCurrentUser();
   const [services, setServices] = React.useState<Service[]>([]);
   const [bookings, setBookings] = React.useState<Booking[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -33,6 +33,8 @@ export default function TechnicianDashboardPage() {
   const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
+    if (isPending || user?.role !== "technician") return;
+
     let cancelled = false;
 
     async function load() {
@@ -62,7 +64,7 @@ export default function TechnicianDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [isPending, user?._id, user?.role, reloadKey]);
 
   const totalServices = services.length;
   const approvedServices = services.filter(

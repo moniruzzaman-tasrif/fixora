@@ -15,6 +15,7 @@ import { Service, Booking, Payment, User } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getSuccessfulPayments } from "@/lib/admin-metrics";
 import { ApiError } from "@/lib/api";
+import { useCurrentUser } from "@/lib/session";
 import {
   getAdminUsers,
   getAdminServices,
@@ -39,6 +40,7 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
+  const { user, isPending } = useCurrentUser();
   const [users, setUsers] = React.useState<User[]>([]);
   const [services, setServices] = React.useState<Service[]>([]);
   const [bookings, setBookings] = React.useState<Booking[]>([]);
@@ -53,6 +55,8 @@ export default function AdminDashboardPage() {
   } | null>(null);
 
   React.useEffect(() => {
+    if (isPending || user?.role !== "admin") return;
+
     let cancelled = false;
 
     async function load() {
@@ -87,7 +91,7 @@ export default function AdminDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [isPending, user?.role, reloadKey]);
 
   const totalUsers = users.length;
   const totalTechnicians = users.filter((u) => u.role === "technician").length;

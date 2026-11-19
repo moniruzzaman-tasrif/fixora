@@ -80,8 +80,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
         )}
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          {/* Children stay mounted while the session resolves so the page
-              segment itself is never dropped from rendering. */}
           <div
             className={cn("mx-auto max-w-7xl", !isReady && "hidden")}
             aria-hidden={!isReady}

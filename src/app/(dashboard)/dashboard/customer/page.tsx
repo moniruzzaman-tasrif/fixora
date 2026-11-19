@@ -62,7 +62,7 @@ export default function CustomerDashboardPage() {
   const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
-    if (isPending || !user?._id) return;
+    if (isPending || user?.role !== "customer" || !user._id) return;
 
     let cancelled = false;
 
@@ -81,7 +81,7 @@ export default function CustomerDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [isPending, user?._id, reloadKey]);
+  }, [isPending, user?._id, user?.role, reloadKey]);
 
   const handleRetry = () => {
     setLoadState("loading");

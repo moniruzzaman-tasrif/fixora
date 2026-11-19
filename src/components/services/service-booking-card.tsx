@@ -265,8 +265,8 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
             )}
           </Button>
 
-          <p className="text-[11px] text-center text-slate-400">
-            🔒 Zero risk. You only pay after your repair is completed and tested.
+          <p className="text-xs text-center text-slate-400">
+            Payment is due after the technician marks the repair complete.
           </p>
         </form>
       )}

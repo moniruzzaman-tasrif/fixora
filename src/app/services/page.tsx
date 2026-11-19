@@ -27,20 +27,17 @@ function ServicesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // URL search params
-  const initialCategory = searchParams.get("category") || "all";
-  const initialSearch = searchParams.get("search") || "";
-  const initialMode = searchParams.get("mode") || "all";
-  const requestedSort = searchParams.get("sort");
+  const searchParamsKey = searchParams.toString();
+  const params = new URLSearchParams(searchParamsKey);
+  const selectedCategory = params.get("category") || "all";
+  const searchQuery = params.get("search") || "";
+  const selectedMode = params.get("mode") || "all";
+  const requestedSort = params.get("sort");
   const initialSort =
     requestedSort === "price-low" || requestedSort === "price-high"
       ? requestedSort
       : "newest";
-
-  const [searchQuery, setSearchQuery] = React.useState(initialSearch);
-  const [selectedCategory, setSelectedCategory] = React.useState(initialCategory);
-  const [selectedMode, setSelectedMode] = React.useState(initialMode);
-  const [selectedSort, setSelectedSort] = React.useState(initialSort);
+  const selectedSort = initialSort;
 
   const [services, setServices] = React.useState<Service[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -108,8 +105,12 @@ function ServicesContent() {
   }, [selectedCategory, selectedMode, searchQuery, selectedSort, retryKey]);
 
   // Update URL helper
-  const updateUrlParam = (key: string, value: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+  const updateUrlParam = (
+    key: string,
+    value: string,
+    replace = false
+  ) => {
+    const params = new URLSearchParams(searchParamsKey);
     if (params.get("sort") === "featured") {
       params.delete("sort");
     }
@@ -118,36 +119,32 @@ function ServicesContent() {
     } else {
       params.delete(key);
     }
-    router.replace(`/services?${params.toString()}`, { scroll: false });
+    const href = params.size ? `/services?${params.toString()}` : "/services";
+    if (replace) {
+      router.replace(href, { scroll: false });
+    } else {
+      router.push(href, { scroll: false });
+    }
   };
 
   const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
     updateUrlParam("category", category);
   };
 
   const handleModeChange = (mode: string) => {
-    setSelectedMode(mode);
     updateUrlParam("mode", mode);
   };
 
   const handleSortChange = (sort: string) => {
-    setSelectedSort(sort);
     updateUrlParam("sort", sort);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setSearchQuery(val);
-    updateUrlParam("search", val);
+    updateUrlParam("search", e.target.value, true);
   };
 
   const handleResetFilters = () => {
-    setSelectedCategory("all");
-    setSelectedMode("all");
-    setSelectedSort("newest");
-    setSearchQuery("");
-    router.replace("/services", { scroll: false });
+    router.push("/services", { scroll: false });
   };
 
   const hasActiveFilters =
@@ -196,8 +193,7 @@ function ServicesContent() {
                   <button
                     type="button"
                     onClick={() => {
-                      setSearchQuery("");
-                      updateUrlParam("search", "");
+                      updateUrlParam("search", "", true);
                     }}
                     className="absolute right-3.5 top-5 text-slate-400 hover:text-slate-600"
                     aria-label="Clear search"

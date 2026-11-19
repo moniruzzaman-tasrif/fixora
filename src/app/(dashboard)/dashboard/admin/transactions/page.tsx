@@ -10,6 +10,7 @@ import { Payment } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getSuccessfulPayments } from "@/lib/admin-metrics";
 import { ApiError } from "@/lib/api";
+import { useCurrentUser } from "@/lib/session";
 import { getAdminPayments } from "@/lib/action/api/adminApi";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ import {
 } from "lucide-react";
 
 export default function AdminTransactionsPage() {
+  const { user, isPending } = useCurrentUser();
   const [payments, setPayments] = React.useState<Payment[]>([]);
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
     "loading"
@@ -37,6 +39,8 @@ export default function AdminTransactionsPage() {
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
+    if (isPending || user?.role !== "admin") return;
+
     let cancelled = false;
 
     async function load() {
@@ -62,7 +66,7 @@ export default function AdminTransactionsPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [isPending, user?.role, reloadKey]);
 
   const successfulPayments = getSuccessfulPayments(payments);
   const totalVolume = successfulPayments.reduce(

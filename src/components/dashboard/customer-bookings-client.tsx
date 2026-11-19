@@ -49,7 +49,7 @@ export function CustomerBookingsClient() {
   const [payingId, setPayingId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (isPending || !user?._id) return;
+    if (isPending || user?.role !== "customer" || !user._id) return;
 
     let cancelled = false;
 
@@ -68,7 +68,7 @@ export function CustomerBookingsClient() {
     return () => {
       cancelled = true;
     };
-  }, [isPending, user?._id, reloadKey]);
+  }, [isPending, user?._id, user?.role, reloadKey]);
 
   const refresh = () => setReloadKey((key) => key + 1);
 

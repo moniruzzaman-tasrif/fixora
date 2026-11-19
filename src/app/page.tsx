@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { FeaturedServices } from "@/components/home/featured-services";
 import { Button } from "@/components/ui/button";
 import { SERVICE_CATEGORIES } from "@/lib/constants";
 import type { ServiceCategory } from "@/types";
@@ -141,13 +142,25 @@ export default function Home() {
                     </div>
 
                     <div className="p-3.5 rounded-xl bg-white border border-slate-200/70 shadow-xs flex items-center gap-3">
-                      <CheckCircle2 className="size-5 text-teal-600 shrink-0" />
+                      <Clock className="size-5 text-teal-600 shrink-0" />
                       <div className="text-xs">
                         <span className="font-semibold text-slate-900 block">
-                          3. Track and pay
+                          3. Track the repair
                         </span>
                         <span className="text-slate-500">
-                          Follow the job status and pay after completion.
+                          Follow progress as the technician works.
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-white border border-slate-200/70 shadow-xs flex items-center gap-3">
+                      <CreditCard className="size-5 text-amber-600 shrink-0" />
+                      <div className="text-xs">
+                        <span className="font-semibold text-slate-900 block">
+                          4. Pay after completion
+                        </span>
+                        <span className="text-slate-500">
+                          Payment is due when the job is marked complete.
                         </span>
                       </div>
                     </div>
@@ -162,6 +175,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <FeaturedServices />
 
         <section className="py-14 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
