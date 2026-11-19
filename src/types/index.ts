@@ -82,10 +82,10 @@ export interface Payment {
   technicianName: string;
   technicianEmail: string;
   amount: number;
-  currency: "usd";
+  currency: string;
   transactionId: string;
   stripeSessionId: string;
-  paymentStatus: "paid";
+  paymentStatus: string;
   paidAt: string;
 }
 

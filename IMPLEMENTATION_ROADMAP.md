@@ -742,51 +742,59 @@ Do not call ImgBB.
 
 ### Step 10 — Admin Dashboard
 
-**Owner:** AI
+**Owner:** AI (frontend) + owner-approved admin backend scope change.
 
-**Objective:** Admin overview plus read-only management tables.
+**Objective:** Admin overview and management pages backed by protected APIs and the
+existing MongoDB collections.
 
 **Reuse:** DashboardShell, `StatCard`, `MiniBarChart`, `DataTable`, `Select`
 (role), `Badge`, `StatusBadge`, `PaymentBadge`, `formatCurrency`, `formatDate`.
 
-**Files to create**
+**Files**
 
-- `src/app/(dashboard)/dashboard/admin/page.tsx` — Total Users, Total Technicians,
-  Pending Services, revenue summary, users-by-role chart, bookings chart.
-- `src/app/(dashboard)/dashboard/admin/users/page.tsx` — photo/avatar, name, email,
-  role, joined date. The role select is interactive and shows a placeholder toast
-  (local state only); the owner's API persists it later. The admin's own role select
-  is disabled.
-- `src/app/(dashboard)/dashboard/admin/services/page.tsx` — all services, approval
-  filter (pending first). **Read-only in this step**; approve/reject actions are
-  added in Step 15, so they are not duplicated here.
-- `src/app/(dashboard)/dashboard/admin/bookings/page.tsx` — read-only all bookings,
-  status filter, amount, payment status.
-- `src/app/(dashboard)/dashboard/admin/transactions/page.tsx` — payments table +
-  total revenue summary.
-- `src/components/dashboard/admin-users-table.tsx`,
-  `admin-services-table.tsx`, `admin-bookings-table.tsx`,
-  `admin-transactions-table.tsx`.
+- `src/app/(dashboard)/dashboard/admin/page.tsx` — actual user, technician,
+  pending-service, booking, and successful-payment data.
+- `src/app/(dashboard)/dashboard/admin/users/page.tsx` — BetterAuth profile fields,
+  real `createdAt`, role confirmation, and persisted role updates.
+- `src/app/(dashboard)/dashboard/admin/services/page.tsx` — all services, status
+  filters, and persisted moderation actions.
+- `src/app/(dashboard)/dashboard/admin/bookings/page.tsx` — all read-only bookings,
+  status filters, and distinct base/final amounts and payment status.
+- `src/app/(dashboard)/dashboard/admin/transactions/page.tsx` — every payment
+  record; revenue includes only unique `paid` records.
+- `backend/src/routes/admin.js` and `backend/src/middleware/auth.js` — protected
+  admin APIs and current BetterAuth-role verification.
 
-**Backend/integration notes:** Owner endpoints in AGENTS.md §12. Client-side filter
-on dummy data is temporary; real filtering/role updates must be server-side.
+**Scope exception (owner-approved 19 Nov 2026):** The owner explicitly authorized
+the admin-only backend work required by this step. The BetterAuth `user` collection
+remains the only user source; no collections, schemas, or records were migrated or
+deleted. Other owner-reserved backend features remain out of scope.
 
-**Dummy data:** 8 users (4 customers, 3 technicians, 1 admin), all 15 services, all
-8 bookings, all 4 payments.
+**Backend/integration notes:** Admin endpoints verify the signed JWT identity
+originating from a BetterAuth session against the current `user` collection and
+require its current role to be `admin`. User responses exclude authentication
+credentials. Client-side filters operate on records returned by protected
+endpoints; they are not security controls.
 
-**Expected result:** Admin can review every entity in a consistent, responsive UI.
+**Dummy data:** None. Admin counts and rows come from the existing collections.
+
+**Expected result:** Admin can review and manage all platform records without
+exposing admin data to non-admin API callers.
 
 **Testing checklist**
 
-- [ ] Stats and revenue totals match dummy data.
-- [ ] Pending services appear first / are easy to find.
-- [ ] Status and approval filters work on dummy data.
-- [ ] Admin's own role select is disabled with an explanation.
-- [ ] Role changes are local-only and clearly labelled as not yet saved.
-- [ ] Transactions total is the sum of payment amounts.
-- [ ] Wide tables become scrollable/cards on mobile.
-- [ ] `/dashboard/admin` previews the admin sidebar and role label (display only);
-      no access control is added.
+- [x] Overview cards use actual user/service API records, not fixed counts.
+- [x] Users are read from BetterAuth `user`; role values are validated and
+      self-role changes are rejected server-side.
+- [x] Service status filters and confirmed approval actions use protected APIs.
+- [x] All booking statuses are filterable; the page has no booking mutation action.
+- [x] All payment records are shown; revenue excludes non-paid and duplicate
+      payment intents.
+- [x] Loading, error, and empty states are present on the admin pages.
+- [x] Backend tests cover authorization, role changes, service approval, and the
+      public approved-and-available service filter.
+- [ ] Live MongoDB/login flow and responsive browser checks must be verified before
+      marking this step complete.
 
 **Depends on:** Step 8.
 
@@ -927,11 +935,10 @@ explicitly owner-only action.
 
 ### Step 15 — Service Management & Approval UI
 
-**Owner:** AI
+**Owner:** AI (UI) + owner-approved admin approval persistence.
 
-**Objective:** Complete technician service CRUD UI and admin approval actions (UI
-only, no persistence). This is where the admin approval buttons first appear; the
-Step 10 admin services page stays read-only.
+**Objective:** Complete technician service CRUD UI and admin approval actions. The
+admin approval portion now persists through the protected admin API.
 
 **Reuse:** DataTable, Dialog, AlertDialog, `Switch`, `Select`, `StatusBadge`,
 `EmptyState`, toasts.
@@ -953,7 +960,12 @@ Step 10 admin services page stays read-only.
 
 **Backend/integration notes:** `PATCH/DELETE /api/services/:id`,
 `PATCH /api/admin/services/:id/approval`. Editing must reset approval server-side.
-Toggle availability must hide the service publicly.
+Toggle availability must hide the service publicly. Admin approval changes
+`approvalStatus` only; it never changes `isAvailable`.
+
+**Scope note:** Only the admin approval portion was included in the owner-approved
+scope change for this request. Do not mark the full step complete until all
+technician service-management requirements are separately verified.
 
 **Dummy data:** services for the demo technician + other technicians' services for
 admin approval.
@@ -968,6 +980,9 @@ placeholder feedback.
 - [ ] Status badges update in local UI state after an action (demo only).
 - [ ] Empty state when a technician has no services.
 - [ ] Keyboard accessibility for dialogs and toggles.
+- [x] Admin approve/reject actions require confirmation and persist through the
+      protected API without changing availability.
+- [x] Public service listings require both approved status and availability.
 
 **Depends on:** Steps 9–10.
 

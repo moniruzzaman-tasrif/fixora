@@ -1,6 +1,6 @@
 import express from "express";
 import { Service } from "../models/index.js";
-import { verifyToken, verifyTechnician, verifyAdmin } from "../middleware/auth.js";
+import { verifyToken, verifyTechnician } from "../middleware/auth.js";
 const r = express.Router();
 r.get("/", async (req,res)=>{
   const {category,search,mode,sort}=req.query;
@@ -55,11 +55,5 @@ r.patch("/:id/availability", verifyToken, verifyTechnician, async (req,res)=>{
   s.isAvailable=!!req.body.isAvailable;
   await s.save();
   res.json(s);
-});
-r.patch("/:id/approval", verifyToken, verifyAdmin, async (req,res)=>{
-  const {approvalStatus}=req.body;
-  if(!["pending","approved","rejected"].includes(approvalStatus)) return res.status(400).json({message:"Invalid"});
-  const s=await Service.findByIdAndUpdate(req.params.id,{approvalStatus},{new:true});
-  res.json({success:true,service:s});
 });
 export default r;

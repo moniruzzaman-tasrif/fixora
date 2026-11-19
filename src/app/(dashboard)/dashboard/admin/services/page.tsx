@@ -3,6 +3,8 @@
 import * as React from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { AdminServiceImage } from "@/components/dashboard/admin-service-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +16,6 @@ import { getAdminServices, setServiceApproval } from "@/lib/action/api/adminApi"
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-  ShieldCheck,
   Search,
   Check,
   X,
@@ -22,7 +23,6 @@ import {
   Wrench,
   AlertCircle,
   Eye,
-  Filter,
 } from "lucide-react";
 
 export default function AdminServicesPage() {
@@ -37,12 +37,17 @@ export default function AdminServicesPage() {
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [busyServiceId, setBusyServiceId] = React.useState<string | null>(null);
+  const [serviceDecision, setServiceDecision] = React.useState<{
+    service: Service;
+    approvalStatus: "approved" | "rejected";
+  } | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
 
     async function load() {
       setLoadState("loading");
+      setLoadError("");
       try {
         const data = await getAdminServices();
         if (cancelled) return;
@@ -98,28 +103,28 @@ export default function AdminServicesPage() {
   }, [services, searchQuery, statusFilter, categoryFilter]);
 
   // Approval update against the protected admin API
-  const handleUpdateStatus = async (
-    serviceId: string,
-    newStatus: ApprovalStatus,
-    title: string
-  ) => {
-    setBusyServiceId(serviceId);
+  const handleUpdateStatus = async () => {
+    if (!serviceDecision) return;
+    const { service, approvalStatus } = serviceDecision;
+    setBusyServiceId(service._id);
     try {
-      const { service: updated } = await setServiceApproval(serviceId, newStatus);
+      const { service: updated } = await setServiceApproval(
+        service._id,
+        approvalStatus
+      );
       setServices((prev) =>
         prev.map((row) => (row._id === updated._id ? { ...row, ...updated } : row))
       );
-      if (selectedService && selectedService._id === serviceId) {
+      if (selectedService && selectedService._id === service._id) {
         setSelectedService((prev) => (prev ? { ...prev, ...updated } : null));
       }
 
-      if (newStatus === "approved") {
-        toast.success(`Service "${title}" approved. It is now visible to customers.`);
-      } else if (newStatus === "rejected") {
-        toast.error(`Service "${title}" rejected.`);
-      } else {
-        toast.success(`Service "${title}" moved back to pending review.`);
-      }
+      toast.success(
+        approvalStatus === "approved"
+          ? `Service "${service.title}" approved. It is now visible to customers.`
+          : `Service "${service.title}" rejected.`
+      );
+      setServiceDecision(null);
     } catch (err: unknown) {
       toast.error(
         err instanceof ApiError || err instanceof Error
@@ -309,14 +314,11 @@ export default function AdminServicesPage() {
                       {/* Service Details with Thumbnail */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="size-12 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={service.image}
-                              alt={service.title}
-                              className="size-full object-cover"
-                            />
-                          </div>
+                          <AdminServiceImage
+                            src={service.image}
+                            alt={service.title}
+                            className="size-12 rounded-lg shrink-0 border border-slate-200"
+                          />
                           <div className="min-w-0 max-w-xs sm:max-w-sm">
                             <p className="font-semibold text-slate-900 truncate">
                               {service.title}
@@ -379,7 +381,12 @@ export default function AdminServicesPage() {
                             <>
                               <Button
                                 size="sm"
-                                onClick={() => handleUpdateStatus(service._id, "approved", service.title)}
+                                onClick={() =>
+                                  setServiceDecision({
+                                    service,
+                                    approvalStatus: "approved",
+                                  })
+                                }
                                 disabled={busyServiceId === service._id}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-semibold gap-1"
                               >
@@ -389,7 +396,12 @@ export default function AdminServicesPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleUpdateStatus(service._id, "rejected", service.title)}
+                                onClick={() =>
+                                  setServiceDecision({
+                                    service,
+                                    approvalStatus: "rejected",
+                                  })
+                                }
                                 disabled={busyServiceId === service._id}
                                 className="border-rose-200 text-rose-700 hover:bg-rose-50 h-8 text-xs font-semibold gap-1"
                               >
@@ -403,7 +415,12 @@ export default function AdminServicesPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleUpdateStatus(service._id, "rejected", service.title)}
+                              onClick={() =>
+                                setServiceDecision({
+                                  service,
+                                  approvalStatus: "rejected",
+                                })
+                              }
                               disabled={busyServiceId === service._id}
                               className="border-slate-200 text-rose-700 hover:bg-rose-50 h-8 text-xs font-medium"
                             >
@@ -415,7 +432,12 @@ export default function AdminServicesPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => handleUpdateStatus(service._id, "approved", service.title)}
+                              onClick={() =>
+                                setServiceDecision({
+                                  service,
+                                  approvalStatus: "approved",
+                                })
+                              }
                               disabled={busyServiceId === service._id}
                               className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 h-8 text-xs font-medium"
                             >
@@ -450,11 +472,10 @@ export default function AdminServicesPage() {
             </div>
 
             <div className="h-44 rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <AdminServiceImage
                 src={selectedService.image}
                 alt={selectedService.title}
-                className="size-full object-cover"
+                className="size-full"
               />
             </div>
 
@@ -505,9 +526,12 @@ export default function AdminServicesPage() {
               {selectedService.approvalStatus !== "approved" && (
                 <Button
                   size="sm"
-                  onClick={() => {
-                    handleUpdateStatus(selectedService._id, "approved", selectedService.title);
-                  }}
+                  onClick={() =>
+                    setServiceDecision({
+                      service: selectedService,
+                      approvalStatus: "approved",
+                    })
+                  }
                   disabled={busyServiceId === selectedService._id}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs gap-1"
                 >
@@ -519,9 +543,12 @@ export default function AdminServicesPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    handleUpdateStatus(selectedService._id, "rejected", selectedService.title);
-                  }}
+                  onClick={() =>
+                    setServiceDecision({
+                      service: selectedService,
+                      approvalStatus: "rejected",
+                    })
+                  }
                   disabled={busyServiceId === selectedService._id}
                   className="border-rose-200 text-rose-700 hover:bg-rose-50 font-semibold text-xs gap-1"
                 >
@@ -533,6 +560,35 @@ export default function AdminServicesPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={Boolean(serviceDecision)}
+        onClose={() => setServiceDecision(null)}
+        onConfirm={handleUpdateStatus}
+        title={
+          serviceDecision?.approvalStatus === "approved"
+            ? "Approve this service?"
+            : "Reject this service?"
+        }
+        description={
+          serviceDecision
+            ? `"${serviceDecision.service.title}" will be ${
+                serviceDecision.approvalStatus === "approved"
+                  ? "visible to customers"
+                  : "marked as rejected"
+              }.`
+            : ""
+        }
+        confirmLabel={
+          serviceDecision?.approvalStatus === "approved" ? "Approve" : "Reject"
+        }
+        variant={
+          serviceDecision?.approvalStatus === "approved" ? "success" : "danger"
+        }
+        isLoading={Boolean(
+          serviceDecision && busyServiceId === serviceDecision.service._id
+        )}
+      />
     </div>
   );
 }

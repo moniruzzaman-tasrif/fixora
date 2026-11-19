@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Booking, BookingStatus } from "@/types";
+import { Booking } from "@/types";
+import { AdminServiceImage } from "@/components/dashboard/admin-service-image";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ApiError } from "@/lib/api";
 import { getAdminBookings } from "@/lib/action/api/adminApi";
@@ -18,11 +19,7 @@ import {
   Search,
   Eye,
   X,
-  CreditCard,
-  MapPin,
   Clock,
-  User,
-  Wrench,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
@@ -40,6 +37,7 @@ export default function AdminBookingsPage() {
 
     async function load() {
       setLoadState("loading");
+      setLoadError("");
       try {
         const data = await getAdminBookings();
         if (cancelled) return;
@@ -219,14 +217,11 @@ export default function AdminBookingsPage() {
                       {/* Booking / Service */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={b.serviceImage}
-                              alt={b.serviceTitle}
-                              className="size-full object-cover"
-                            />
-                          </div>
+                          <AdminServiceImage
+                            src={b.serviceImage}
+                            alt={b.serviceTitle}
+                            className="size-10 rounded-lg shrink-0 border border-slate-200"
+                          />
                           <div className="min-w-0 max-w-xs">
                             <p className="font-semibold text-slate-900 truncate">
                               {b.serviceTitle}

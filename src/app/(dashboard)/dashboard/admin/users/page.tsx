@@ -3,6 +3,7 @@
 import * as React from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ export default function AdminUsersPage() {
 
     async function load() {
       setLoadState("loading");
+      setLoadError("");
       try {
         const rows = await getAdminUsers();
         if (cancelled) return;
@@ -74,6 +76,7 @@ export default function AdminUsersPage() {
   const [editingUser, setEditingUser] = React.useState<User | null>(null);
   const [newRole, setNewRole] = React.useState<UserRole>("customer");
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [isRoleConfirmationOpen, setIsRoleConfirmationOpen] = React.useState(false);
 
   const filteredUsers = React.useMemo(() => {
     return users.filter((user) => {
@@ -100,7 +103,7 @@ export default function AdminUsersPage() {
     setNewRole(user.role);
   };
 
-  const handleSaveRole = async () => {
+  const handleConfirmRoleChange = async () => {
     if (!editingUser) return;
     setIsUpdating(true);
 
@@ -112,7 +115,9 @@ export default function AdminUsersPage() {
       toast.success(
         `Role for "${updated.name}" updated to ${newRole.toUpperCase()}.`
       );
+      setIsRoleConfirmationOpen(false);
       setEditingUser(null);
+      setReloadKey((key) => key + 1);
     } catch (err: unknown) {
       toast.error(
         err instanceof ApiError || err instanceof Error
@@ -123,6 +128,38 @@ export default function AdminUsersPage() {
       setIsUpdating(false);
     }
   };
+
+  const handleSaveRole = () => {
+    if (editingUser && newRole !== editingUser.role) {
+      setIsRoleConfirmationOpen(true);
+    }
+  };
+
+  const roleOptions: {
+    id: UserRole;
+    name: string;
+    description: string;
+    icon: typeof UserIcon;
+  }[] = [
+    {
+      id: "customer",
+      name: "Customer",
+      description: "Can browse services, book repairs, and make payments.",
+      icon: UserIcon,
+    },
+    {
+      id: "technician",
+      name: "Technician",
+      description: "Can publish repair services, accept requests, and perform jobs.",
+      icon: Wrench,
+    },
+    {
+      id: "admin",
+      name: "Administrator",
+      description: "Full moderation, user role management, and revenue oversight.",
+      icon: ShieldCheck,
+    },
+  ];
 
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
@@ -284,16 +321,20 @@ export default function AdminUsersPage() {
                       {/* Name & Avatar */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center font-bold text-teal-800 text-sm">
-                            {user.image ? (
+                          <div className="relative size-10 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center font-bold text-teal-800 text-sm">
+                            <span aria-hidden="true">
+                              {(user.name || "?").charAt(0)}
+                            </span>
+                            {user.image && (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={user.image}
                                 alt={user.name}
-                                className="size-full object-cover"
+                                className="absolute inset-0 size-full object-cover"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                }}
                               />
-                            ) : (
-                              user.name.charAt(0)
                             )}
                           </div>
                           <div className="min-w-0">
@@ -383,34 +424,17 @@ export default function AdminUsersPage() {
                 Select New Role:
               </label>
               <div className="grid grid-cols-1 gap-2">
-                {[
-                  {
-                    id: "customer",
-                    name: "Customer",
-                    description: "Can browse services, book repairs, and make payments.",
-                    icon: UserIcon,
-                  },
-                  {
-                    id: "technician",
-                    name: "Technician",
-                    description: "Can publish repair services, accept requests, and perform jobs.",
-                    icon: Wrench,
-                  },
-                  {
-                    id: "admin",
-                    name: "Administrator",
-                    description: "Full moderation, user role management, and revenue oversight.",
-                    icon: ShieldCheck,
-                  },
-                ].map((roleOption) => {
+                {roleOptions.map((roleOption) => {
                   const isSelected = newRole === roleOption.id;
                   const Icon = roleOption.icon;
                   return (
-                    <div
+                    <button
                       key={roleOption.id}
-                      onClick={() => setNewRole(roleOption.id as UserRole)}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => setNewRole(roleOption.id)}
                       className={cn(
-                        "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all text-left",
+                        "flex w-full items-start gap-3 p-3 rounded-xl border transition-all text-left",
                         isSelected
                           ? "border-teal-600 bg-teal-50/70 shadow-xs ring-1 ring-teal-600"
                           : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
@@ -437,7 +461,7 @@ export default function AdminUsersPage() {
                           {roleOption.description}
                         </p>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -457,7 +481,10 @@ export default function AdminUsersPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setEditingUser(null)}
+                onClick={() => {
+                  setIsRoleConfirmationOpen(false);
+                  setEditingUser(null);
+                }}
                 disabled={isUpdating}
                 className="text-xs"
               >
@@ -469,12 +496,27 @@ export default function AdminUsersPage() {
                 disabled={isUpdating || newRole === editingUser.role}
                 className="bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs min-w-24"
               >
-                {isUpdating ? "Saving..." : "Save Role"}
+                Continue
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={isRoleConfirmationOpen && Boolean(editingUser)}
+        onClose={() => setIsRoleConfirmationOpen(false)}
+        onConfirm={handleConfirmRoleChange}
+        title="Confirm role change"
+        description={
+          editingUser
+            ? `Change ${editingUser.name}'s role from ${editingUser.role} to ${newRole}?`
+            : ""
+        }
+        confirmLabel="Confirm change"
+        variant={newRole === "admin" ? "warning" : "primary"}
+        isLoading={isUpdating}
+      />
     </div>
   );
 }

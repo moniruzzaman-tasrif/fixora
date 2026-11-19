@@ -43,10 +43,10 @@ export function setServiceApproval(
 
 /** Every booking on the platform (read-only page). */
 export function getAdminBookings(): Promise<Booking[]> {
-  return apiRequest<Booking[]>("/booking");
+  return apiRequest<Booking[]>("/admin/bookings");
 }
 
-/** Every settled payment, newest first. */
+/** Every payment record, newest first. */
 export function getAdminPayments(): Promise<Payment[]> {
   return apiRequest<Payment[]>("/admin/payments");
 }

@@ -5,12 +5,13 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Payment } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { getSuccessfulPayments } from "@/lib/admin-metrics";
 import { ApiError } from "@/lib/api";
 import { getAdminPayments } from "@/lib/action/api/adminApi";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Receipt,
@@ -22,7 +23,6 @@ import {
   Check,
   X,
   DollarSign,
-  ShieldCheck,
   AlertCircle,
 } from "lucide-react";
 
@@ -41,14 +41,11 @@ export default function AdminTransactionsPage() {
 
     async function load() {
       setLoadState("loading");
+      setLoadError("");
       try {
         const data = await getAdminPayments();
         if (cancelled) return;
-        setPayments(
-          (Array.isArray(data) ? data : []).filter(
-            (payment) => payment.paymentStatus === "paid"
-          )
-        );
+        setPayments(Array.isArray(data) ? data : []);
         setLoadState("ready");
       } catch (err: unknown) {
         if (cancelled) return;
@@ -67,27 +64,35 @@ export default function AdminTransactionsPage() {
     };
   }, [reloadKey]);
 
-  // Platform metrics — settled revenue only
-  const totalVolume = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  const totalCount = payments.length;
-  const averageTicket = totalCount > 0 ? Math.round(totalVolume / totalCount) : 0;
+  const successfulPayments = getSuccessfulPayments(payments);
+  const totalVolume = successfulPayments.reduce(
+    (sum, payment) => sum + payment.amount,
+    0
+  );
+  const totalCount = successfulPayments.length;
+  const averageTicket = totalCount > 0 ? totalVolume / totalCount : 0;
 
   // Search filter
   const filteredPayments = React.useMemo(() => {
     return payments.filter((p) => {
       const q = searchQuery.toLowerCase();
       return (
-        p.transactionId.toLowerCase().includes(q) ||
-        p.serviceTitle.toLowerCase().includes(q) ||
-        p.customerName.toLowerCase().includes(q) ||
-        p.customerEmail.toLowerCase().includes(q) ||
-        p.technicianName.toLowerCase().includes(q)
+        p.transactionId?.toLowerCase().includes(q) ||
+        p.serviceTitle?.toLowerCase().includes(q) ||
+        p.customerName?.toLowerCase().includes(q) ||
+        p.customerEmail?.toLowerCase().includes(q) ||
+        p.technicianName?.toLowerCase().includes(q)
       );
     });
   }, [payments, searchQuery]);
 
-  const handleCopyTransactionId = (txId: string) => {
-    navigator.clipboard.writeText(txId);
+  const handleCopyTransactionId = async (txId: string) => {
+    try {
+      await navigator.clipboard.writeText(txId);
+    } catch {
+      toast.error("Could not copy the transaction ID.");
+      return;
+    }
     setCopiedId(txId);
     toast.success("Transaction ID copied to clipboard");
     setTimeout(() => setCopiedId(null), 2000);
@@ -98,15 +103,8 @@ export default function AdminTransactionsPage() {
       {/* Header */}
       <PageHeader
         heading="Transactions & Revenue"
-        description="Review all customer payments settled through Stripe and platform revenue logs."
-      >
-        <div className="flex items-center gap-2">
-          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 font-semibold gap-1 text-xs px-3 py-1">
-            <ShieldCheck className="size-3.5 text-emerald-700" />
-            Stripe Connected
-          </Badge>
-        </div>
-      </PageHeader>
+        description="All stored payment records. Revenue includes unique successful payments only."
+      />
 
       {loadState === "loading" ? (
         <div className="space-y-4" role="status" aria-label="Loading transactions">
@@ -142,12 +140,12 @@ export default function AdminTransactionsPage() {
         <StatCard
           title="Completed Transactions"
           value={totalCount}
-          subtitle="100% success rate on Stripe"
+          subtitle="Unique successful payments"
           icon={Receipt}
           iconClassName="bg-teal-50 text-teal-700"
         />
         <StatCard
-          title="Average Order Value"
+          title="Average Successful Payment"
           value={formatCurrency(averageTicket)}
           subtitle="Average customer repair spend"
           icon={DollarSign}
@@ -177,7 +175,7 @@ export default function AdminTransactionsPage() {
 
         <p className="text-xs text-slate-500 self-end sm:self-center">
           Showing <span className="font-semibold text-slate-800">{filteredPayments.length}</span> of{" "}
-          <span className="font-semibold text-slate-800">{payments.length}</span> settled payments
+          <span className="font-semibold text-slate-800">{payments.length}</span> payment records
         </p>
       </div>
 
@@ -201,8 +199,8 @@ export default function AdminTransactionsPage() {
                     <th scope="col" className="px-6 py-3.5">Service</th>
                     <th scope="col" className="px-6 py-3.5">Customer</th>
                     <th scope="col" className="px-6 py-3.5">Technician</th>
-                    <th scope="col" className="px-6 py-3.5">Settled Amount</th>
-                    <th scope="col" className="px-6 py-3.5">Paid Date</th>
+                    <th scope="col" className="px-6 py-3.5">Amount</th>
+                    <th scope="col" className="px-6 py-3.5">Payment Date</th>
                     <th scope="col" className="px-6 py-3.5 text-right">Status</th>
                   </tr>
                 </thead>
@@ -214,19 +212,23 @@ export default function AdminTransactionsPage() {
                         <div className="flex items-center gap-1.5 font-mono text-xs text-slate-800">
                           <CreditCard className="size-3.5 text-teal-600 shrink-0" />
                           <span className="truncate max-w-[140px] sm:max-w-[180px]">
-                            {p.transactionId}
+                            {p.transactionId || "Unavailable"}
                           </span>
-                          <button
-                            onClick={() => handleCopyTransactionId(p.transactionId)}
-                            title="Copy Transaction ID"
-                            className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
-                          >
-                            {copiedId === p.transactionId ? (
-                              <Check className="size-3 text-emerald-600" />
-                            ) : (
-                              <Copy className="size-3" />
-                            )}
-                          </button>
+                          {p.transactionId && (
+                            <button
+                              type="button"
+                              aria-label="Copy transaction ID"
+                              onClick={() => void handleCopyTransactionId(p.transactionId)}
+                              title="Copy Transaction ID"
+                              className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0"
+                            >
+                              {copiedId === p.transactionId ? (
+                                <Check className="size-3 text-emerald-600" />
+                              ) : (
+                                <Copy className="size-3" />
+                              )}
+                            </button>
+                          )}
                         </div>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                           ID: #{p._id.slice(-6).toUpperCase()}
@@ -258,7 +260,7 @@ export default function AdminTransactionsPage() {
                       {/* Amount */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <p className="font-bold text-slate-900 text-sm">
-                          {formatCurrency(p.amount)}
+                          {formatCurrency(p.amount, p.currency)}
                         </p>
                         <span className="text-[10px] font-semibold uppercase text-slate-400">
                           {p.currency}
@@ -272,10 +274,7 @@ export default function AdminTransactionsPage() {
 
                       {/* Status */}
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <CheckCircle2 className="size-3 text-emerald-600" />
-                          Settled
-                        </span>
+                        <TransactionStatusBadge status={p.paymentStatus} />
                       </td>
                     </tr>
                   ))}
@@ -288,5 +287,32 @@ export default function AdminTransactionsPage() {
       </>
     )}
   </div>
+  );
+}
+
+function TransactionStatusBadge({ status }: { status: string }) {
+  const safeStatus = status || "";
+  const normalizedStatus = safeStatus.toLowerCase();
+  const successful = normalizedStatus === "paid";
+  const failed = ["failed", "cancelled", "canceled"].includes(normalizedStatus);
+  const label = safeStatus
+    ? safeStatus.charAt(0).toUpperCase() + safeStatus.slice(1)
+    : "Unknown";
+  const className = successful
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : failed
+      ? "bg-rose-50 text-rose-700 border-rose-200"
+      : "bg-amber-50 text-amber-700 border-amber-200";
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-semibold",
+        className
+      )}
+    >
+      {successful && <CheckCircle2 className="size-3 text-emerald-600" />}
+      {label}
+    </span>
   );
 }
