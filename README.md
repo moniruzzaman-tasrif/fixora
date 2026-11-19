@@ -1,50 +1,99 @@
 # Fixora
 
-Fixora is a role-based repair-service booking platform for customers,
-technicians, and administrators.
+**Your Home, Our Responsibility.**
 
-## Development
+Fixora is a role-based home appliance and smart-device repair booking platform.
+Customers request repairs, technicians manage services and jobs, and admins
+moderate listings and review platform activity.
 
-Start the frontend:
+## Key features
 
-```bash
+- BetterAuth sessions with customer, technician, and admin roles.
+- Browse approved, available services with search, filters, sorting, and details.
+- Server-validated repair requests and technician-managed booking status changes.
+- Role-specific dashboards, profile updates, and service moderation.
+- Hosted Stripe Checkout for completed, unpaid bookings.
+
+## Technology
+
+- Frontend: Next.js, React, TypeScript, Tailwind CSS, BetterAuth, Lucide, Sonner.
+- API: Express, MongoDB, CORS, and dotenv.
+- Payments: Stripe Checkout in test mode.
+
+## Repositories
+
+- This repository contains the Next.js frontend and BetterAuth configuration.
+- The Express API is the separate `fixora-server` repository. The frontend does
+  not use a local `backend/` directory.
+- Both applications connect to the existing `fixora` MongoDB database. BetterAuth
+  users remain in the existing `user` collection; services, bookings, and payments
+  use the existing server collections.
+
+## Local development
+
+Run the frontend from this repository:
+
+```powershell
 npm install
 npm run dev
 ```
 
-Start the Express API separately:
+In a second terminal, run the API from the sibling `fixora-server` repository:
 
-```bash
-cd backend
+```powershell
+Set-Location ..\fixora-server
 npm install
-npm run dev
+node index.js
 ```
 
-The frontend runs at `http://localhost:3000` and the API at
-`http://localhost:5000`.
-Both applications must connect to the same MongoDB deployment and the `fixora`
-database. BetterAuth's original `user` collection is the single source of user
-records; the Express API accesses that collection for profile and admin-user
-operations.
+The local frontend is `http://localhost:3000`; the API listens on port `5000` by
+default.
 
-## Required environment variables
+## Environment
 
-Frontend:
+Use the existing ignored `.env` file in each repository for local values; this
+setup does not require creating `.env.local`. Next.js will also load that file if
+it already exists. Do not commit credentials or expose secrets through
+`NEXT_PUBLIC_*` variables.
+
+Frontend (`fixora/.env`):
 
 - `MONGODB_URL`
 - `BETTER_AUTH_SECRET`
 - `BETTER_AUTH_URL`
 - `JWT_SECRET`
-- `IMGBB_API_KEY`
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- `STRIPE_SECRET_KEY`
+- `NEXT_PUBLIC_API_URL` (for example, `http://localhost:5000`)
+- `IMGBB_API_KEY` (server-side upload route)
+- `STRIPE_SECRET_KEY` (server-only)
+- `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` (optional provider configuration)
 
-Backend:
+API (`fixora-server/.env`):
 
-- `MONGODB_URI`
+- `MONGODB_URL` or `MONGODB_URI`
 - `JWT_SECRET`
-- `CLIENT_URL`
-- `IMGBB_API_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
+- `CLIENT_URL` (for example, `http://localhost:3000`)
+- `PORT` (optional; defaults to `5000`)
+- `STRIPE_SECRET_KEY` (Stripe test-mode key)
+- `STRIPE_WEBHOOK_SECRET` (when testing Stripe webhooks)
+
+## Verification
+
+Run the frontend checks from this repository:
+
+```powershell
+npx tsc --noEmit
+npm run lint
+npm run build
+```
+
+Run the API unit tests from `fixora-server`:
+
+```powershell
+npm test
+```
+
+The live deployment URL and administrator test credentials have not been verified
+or supplied for this repository. No Git remotes are configured in this checkout,
+so client/server repository URLs are also unavailable. Add those details when
+provided, and share credentials through a secure channel rather than committing
+passwords.

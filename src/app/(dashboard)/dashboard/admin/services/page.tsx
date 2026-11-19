@@ -12,8 +12,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Service, ApprovalStatus } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ApiError } from "@/lib/api";
+import { useCurrentUser } from "@/lib/session";
 import { getAdminServices, setServiceApproval } from "@/lib/action/api/adminApi";
 import { cn } from "@/lib/utils";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 import { toast } from "sonner";
 import {
   Search,
@@ -26,6 +28,7 @@ import {
 } from "lucide-react";
 
 export default function AdminServicesPage() {
+  const { user, isPending } = useCurrentUser();
   const [services, setServices] = React.useState<Service[]>([]);
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
     "loading"
@@ -43,6 +46,8 @@ export default function AdminServicesPage() {
   } | null>(null);
 
   React.useEffect(() => {
+    if (isPending || user?.role !== "admin") return;
+
     let cancelled = false;
 
     async function load() {
@@ -68,10 +73,15 @@ export default function AdminServicesPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [isPending, user?.role, reloadKey]);
 
   // Details preview modal
   const [selectedService, setSelectedService] = React.useState<Service | null>(null);
+  const { dialogRef: servicePreviewRef, onKeyDown: onServicePreviewKeyDown } =
+    useAccessibleDialog<HTMLDivElement>(
+      Boolean(selectedService),
+      () => setSelectedService(null)
+    );
 
   // Filtered services (pending always sorted first in the "All" view)
   const filteredServices = React.useMemo(() => {
@@ -460,14 +470,25 @@ export default function AdminServicesPage() {
       {/* Detail Modal */}
       {selectedService && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in-0 zoom-in-95">
+          <div
+            ref={servicePreviewRef}
+            onKeyDown={onServicePreviewKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-service-preview-title"
+            aria-describedby="admin-service-preview-description"
+            tabIndex={-1}
+            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in-0 zoom-in-95"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-base text-slate-900">
+              <h3 id="admin-service-preview-title" className="font-bold text-base text-slate-900">
                 Service Listing Preview
               </h3>
               <button
+                type="button"
                 onClick={() => setSelectedService(null)}
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close service preview"
               >
                 <X className="size-4" />
               </button>
@@ -492,7 +513,7 @@ export default function AdminServicesPage() {
               <h4 className="font-bold text-lg text-slate-900">
                 {selectedService.title}
               </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
+              <p id="admin-service-preview-description" className="text-xs text-slate-600 leading-relaxed">
                 {selectedService.description}
               </p>
             </div>

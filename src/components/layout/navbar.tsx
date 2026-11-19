@@ -10,6 +10,7 @@ import { PUBLIC_NAV_ITEMS, ROLE_DASHBOARD_ROUTES } from "@/lib/constants";
 import { authClient } from "@/lib/auth-client";
 import { useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { LogIn, UserPlus } from "lucide-react";
 
 export function Navbar() {
@@ -20,8 +21,21 @@ export function Navbar() {
   const { user } = useCurrentUser();
 
   const handleSignOut = async () => {
-    await authClient.signOut();
-    router.refresh();
+    try {
+      const { error } = await authClient.signOut();
+      if (error) {
+        toast.error(error.message || "Could not sign out. Please try again.");
+        return;
+      }
+
+      toast.success("You have been signed out.");
+      router.replace("/");
+      router.refresh();
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not sign out. Please try again."
+      );
+    }
   };
 
   return (

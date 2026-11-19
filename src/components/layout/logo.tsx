@@ -63,7 +63,7 @@ export function Logo({
         </span>
         {showTagline && (
           <span className="text-[10px] text-slate-500 font-medium tracking-normal mt-0.5">
-            Your Home, Our Responsibility
+            Your Home, Our Responsibility.
           </span>
         )}
       </div>

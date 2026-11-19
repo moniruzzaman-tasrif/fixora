@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Trash2, XCircle, CheckCircle, Info } from "lucide-react";
+import { AlertTriangle, Trash2, CheckCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -28,6 +29,14 @@ export function ConfirmDialog({
   variant = "danger",
   isLoading = false,
 }: ConfirmDialogProps) {
+  const titleId = React.useId();
+  const descriptionId = React.useId();
+  const { dialogRef, onKeyDown } = useAccessibleDialog<HTMLDivElement>(
+    isOpen,
+    onClose,
+    !isLoading
+  );
+
   if (!isOpen) return null;
 
   const icons = {
@@ -47,9 +56,14 @@ export function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in-0">
       <div
+        ref={dialogRef}
+        onKeyDown={onKeyDown}
         className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-slate-200 animate-in zoom-in-95 duration-150"
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        tabIndex={-1}
       >
         <div className="flex items-start gap-4">
           <div className="flex size-11 items-center justify-center rounded-xl bg-slate-100 shrink-0">
@@ -57,10 +71,10 @@ export function ConfirmDialog({
           </div>
 
           <div className="flex-1 space-y-1">
-            <h3 className="text-lg font-bold text-slate-900 leading-snug">
+            <h3 id={titleId} className="text-lg font-bold text-slate-900 leading-snug">
               {title}
             </h3>
-            <p className="text-sm text-slate-500 leading-relaxed">
+            <p id={descriptionId} className="text-sm text-slate-500 leading-relaxed">
               {description}
             </p>
           </div>

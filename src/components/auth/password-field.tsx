@@ -55,10 +55,10 @@ export function PasswordField({
           type="button"
           variant="ghost"
           size="icon-xs"
-          className="absolute right-2 top-1/2 -translate-y-1/2 size-7 text-slate-400 hover:text-slate-600 focus:outline-none"
+          className="absolute right-2 top-1/2 -translate-y-1/2 size-7 text-slate-400 hover:text-slate-600 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
           onClick={() => setShowPassword((prev) => !prev)}
-          tabIndex={-1}
           aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-pressed={showPassword}
         >
           {showPassword ? (
             <EyeOff className="size-4" />

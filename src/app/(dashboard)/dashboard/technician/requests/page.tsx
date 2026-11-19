@@ -13,10 +13,12 @@ import { Card } from "@/components/ui/card";
 import { Booking } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ApiError } from "@/lib/api";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 import {
   getTechnicianBookings,
   updateBookingStatus,
 } from "@/lib/action/api/technicianApi";
+import { useCurrentUser } from "@/lib/session";
 import {
   Check,
   XCircle,
@@ -31,6 +33,7 @@ import {
 } from "lucide-react";
 
 export default function TechnicianRequestsPage() {
+  const { user, isPending } = useCurrentUser();
   const [requests, setRequests] = React.useState<Booking[]>([]);
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
     "loading"
@@ -39,6 +42,8 @@ export default function TechnicianRequestsPage() {
   const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
+    if (isPending || user?.role !== "technician") return;
+
     let cancelled = false;
 
     async function load() {
@@ -63,7 +68,7 @@ export default function TechnicianRequestsPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [isPending, user?._id, user?.role, reloadKey]);
 
   const [activeTab, setActiveTab] = React.useState<string>("all");
   const [rejectModalBooking, setRejectModalBooking] =
@@ -73,6 +78,12 @@ export default function TechnicianRequestsPage() {
   const [finalAmountInput, setFinalAmountInput] = React.useState<string>("");
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [busyBookingId, setBusyBookingId] = React.useState<string | null>(null);
+  const { dialogRef: completeDialogRef, onKeyDown: onCompleteDialogKeyDown } =
+    useAccessibleDialog<HTMLDivElement>(
+      Boolean(completeModalBooking),
+      () => setCompleteModalBooking(null),
+      !isProcessing
+    );
 
   const filteredRequests = requests.filter((request) => {
     if (activeTab === "all") return true;
@@ -408,14 +419,24 @@ export default function TechnicianRequestsPage() {
 
       {completeModalBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-slate-200">
+          <div
+            ref={completeDialogRef}
+            onKeyDown={onCompleteDialogKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="complete-job-dialog-title"
+            aria-describedby="complete-job-dialog-description"
+            tabIndex={-1}
+            className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-slate-200"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 id="complete-job-dialog-title" className="text-lg font-bold text-slate-900">
                 Mark Job Completed
               </h3>
               <button
                 type="button"
                 onClick={() => setCompleteModalBooking(null)}
+                disabled={isProcessing}
                 className="text-slate-400 hover:text-slate-600"
                 aria-label="Close dialog"
               >
@@ -424,7 +445,7 @@ export default function TechnicianRequestsPage() {
             </div>
 
             <form onSubmit={handleConfirmComplete} className="space-y-4">
-              <p className="text-xs text-slate-600">
+              <p id="complete-job-dialog-description" className="text-xs text-slate-600">
                 Job: <strong>{completeModalBooking.serviceTitle}</strong> for{" "}
                 <strong>{completeModalBooking.customerName}</strong>.
               </p>
@@ -461,6 +482,7 @@ export default function TechnicianRequestsPage() {
                   type="button"
                   variant="outline"
                   onClick={() => setCompleteModalBooking(null)}
+                  disabled={isProcessing}
                 >
                   Cancel
                 </Button>

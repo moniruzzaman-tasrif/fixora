@@ -12,6 +12,8 @@ import { Booking } from "@/types";
 import { AdminServiceImage } from "@/components/dashboard/admin-service-image";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ApiError } from "@/lib/api";
+import { useCurrentUser } from "@/lib/session";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 import { getAdminBookings } from "@/lib/action/api/adminApi";
 import { cn } from "@/lib/utils";
 import {
@@ -25,6 +27,7 @@ import {
 } from "lucide-react";
 
 export default function AdminBookingsPage() {
+  const { user, isPending } = useCurrentUser();
   const [bookings, setBookings] = React.useState<Booking[]>([]);
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
     "loading"
@@ -33,6 +36,8 @@ export default function AdminBookingsPage() {
   const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
+    if (isPending || user?.role !== "admin") return;
+
     let cancelled = false;
 
     async function load() {
@@ -58,11 +63,16 @@ export default function AdminBookingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [isPending, user?.role, reloadKey]);
 
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedBooking, setSelectedBooking] = React.useState<Booking | null>(null);
+  const { dialogRef: bookingDialogRef, onKeyDown: onBookingDialogKeyDown } =
+    useAccessibleDialog<HTMLDivElement>(
+      Boolean(selectedBooking),
+      () => setSelectedBooking(null)
+    );
 
   // Filter bookings
   const filteredBookings = React.useMemo(() => {
@@ -304,22 +314,33 @@ export default function AdminBookingsPage() {
       {/* Booking Details Modal */}
       {selectedBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in-0 zoom-in-95">
+          <div
+            ref={bookingDialogRef}
+            onKeyDown={onBookingDialogKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-booking-dialog-title"
+            aria-describedby="admin-booking-dialog-description"
+            tabIndex={-1}
+            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in-0 zoom-in-95"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="flex size-9 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
                   <CalendarCheck className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900">
+                  <h3 id="admin-booking-dialog-title" className="font-bold text-base text-slate-900">
                     Booking #{selectedBooking._id.slice(-6).toUpperCase()}
                   </h3>
-                  <p className="text-xs text-slate-500">Full work order audit record</p>
+                  <p id="admin-booking-dialog-description" className="text-xs text-slate-500">Full work order audit record</p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedBooking(null)}
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close booking details"
               >
                 <X className="size-4" />
               </button>

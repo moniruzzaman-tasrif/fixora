@@ -13,6 +13,7 @@ import { formatDate } from "@/lib/format";
 import { useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 import { getAdminUsers, updateUserRole } from "@/lib/action/api/adminApi";
 import { toast } from "sonner";
 import {
@@ -30,7 +31,7 @@ import {
 
 export default function AdminUsersPage() {
   // The signed-in admin comes from the BetterAuth session.
-  const { user: currentUser } = useCurrentUser();
+  const { user: currentUser, isPending } = useCurrentUser();
   const isOwnAccount = (target: User) =>
     Boolean(currentUser && target.email === currentUser.email);
 
@@ -45,6 +46,8 @@ export default function AdminUsersPage() {
   const [selectedRoleFilter, setSelectedRoleFilter] = React.useState<string>("all");
 
   React.useEffect(() => {
+    if (isPending || currentUser?.role !== "admin") return;
+
     let cancelled = false;
 
     async function load() {
@@ -70,13 +73,22 @@ export default function AdminUsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [currentUser?.role, isPending, reloadKey]);
 
   // Modal state for changing role
   const [editingUser, setEditingUser] = React.useState<User | null>(null);
   const [newRole, setNewRole] = React.useState<UserRole>("customer");
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [isRoleConfirmationOpen, setIsRoleConfirmationOpen] = React.useState(false);
+  const { dialogRef: roleDialogRef, onKeyDown: onRoleDialogKeyDown } =
+    useAccessibleDialog<HTMLDivElement>(
+      Boolean(editingUser),
+      () => {
+        setIsRoleConfirmationOpen(false);
+        setEditingUser(null);
+      },
+      !isUpdating && !isRoleConfirmationOpen
+    );
 
   const filteredUsers = React.useMemo(() => {
     return users.filter((user) => {
@@ -389,20 +401,35 @@ export default function AdminUsersPage() {
       {/* Change Role Modal */}
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-5 animate-in fade-in-0 zoom-in-95">
+          <div
+            ref={roleDialogRef}
+            onKeyDown={onRoleDialogKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-role-dialog-title"
+            aria-describedby="admin-role-dialog-description"
+            tabIndex={-1}
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200 space-y-5 animate-in fade-in-0 zoom-in-95"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <div className="flex size-9 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
                   <ShieldCheck className="size-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900">Change User Role</h3>
-                  <p className="text-xs text-slate-500">Update access permissions for this account</p>
+                  <h3 id="admin-role-dialog-title" className="font-bold text-base text-slate-900">Change User Role</h3>
+                  <p id="admin-role-dialog-description" className="text-xs text-slate-500">Update access permissions for this account</p>
                 </div>
               </div>
               <button
-                onClick={() => setEditingUser(null)}
+                type="button"
+                onClick={() => {
+                  setIsRoleConfirmationOpen(false);
+                  setEditingUser(null);
+                }}
+                disabled={isUpdating || isRoleConfirmationOpen}
                 className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close role editor"
               >
                 <X className="size-4" />
               </button>

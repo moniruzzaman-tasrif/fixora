@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { Logo } from "@/components/layout/logo";
 import { SERVICE_CATEGORIES } from "@/lib/constants";
+import { SiFacebook, SiInstagram, SiX } from "react-icons/si";
+
+const socialLinks = [
+  { name: "X", href: "https://x.com/", icon: SiX },
+  { name: "Facebook", href: "https://www.facebook.com/", icon: SiFacebook },
+  { name: "Instagram", href: "https://www.instagram.com/", icon: SiInstagram },
+];
 
 export function Footer() {
   return (
@@ -22,7 +29,7 @@ export function Footer() {
               Repair Categories
             </h4>
             <ul className="space-y-2.5 text-sm">
-              {SERVICE_CATEGORIES.slice(0, 5).map((category) => (
+              {SERVICE_CATEGORIES.map((category) => (
                 <li key={category}>
                   <Link
                     href={`/services?category=${encodeURIComponent(category)}`}
@@ -49,6 +56,14 @@ export function Footer() {
               Platform
             </h4>
             <ul className="space-y-2.5 text-sm">
+              <li>
+                <Link
+                  href="/"
+                  className="text-slate-500 hover:text-teal-700 transition-colors"
+                >
+                  Home
+                </Link>
+              </li>
               <li>
                 <Link
                   href="/services"
@@ -83,6 +98,21 @@ export function Footer() {
               </li>
             </ul>
           </div>
+        </div>
+
+        <div className="mt-8 flex items-center gap-3" aria-label="Social networks">
+          {socialLinks.map(({ name, href, icon: Icon }) => (
+            <a
+              key={name}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Open ${name}`}
+              className="flex size-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:border-teal-300 hover:text-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+            >
+              <Icon className="size-4" aria-hidden="true" />
+            </a>
+          ))}
         </div>
 
         {/* Bottom copyright */}

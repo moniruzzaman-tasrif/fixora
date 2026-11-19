@@ -38,7 +38,7 @@ export default function AboutPage() {
             <div className="max-w-3xl space-y-4">
               <p className="text-sm font-semibold text-teal-700">How Fixora Works</p>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-5xl">
-                A trusted repair journey, from request to payment.
+                A clear repair journey, from request to payment.
               </h1>
               <p className="text-base leading-relaxed text-slate-600">
                 Browse approved service listings, submit a repair request, and

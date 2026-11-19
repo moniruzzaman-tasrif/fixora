@@ -17,6 +17,8 @@ import { Service, ServiceCategory, ServiceMode } from "@/types";
 import { SERVICE_CATEGORIES } from "@/lib/constants";
 import { formatCurrency } from "@/lib/format";
 import { ApiError } from "@/lib/api";
+import { useCurrentUser } from "@/lib/session";
+import { useAccessibleDialog } from "@/lib/use-accessible-dialog";
 import { uploadImage } from "@/lib/upload";
 import {
   getMyServices,
@@ -36,6 +38,7 @@ import {
 } from "lucide-react";
 
 export default function MyServicesPage() {
+  const { user, isPending } = useCurrentUser();
   const [services, setServices] = React.useState<Service[]>([]);
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
     "loading"
@@ -44,6 +47,8 @@ export default function MyServicesPage() {
   const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
+    if (isPending || user?.role !== "technician") return;
+
     let cancelled = false;
 
     async function load() {
@@ -68,7 +73,7 @@ export default function MyServicesPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [isPending, user?._id, user?.role, reloadKey]);
 
   const reload = () => setReloadKey((key) => key + 1);
 
@@ -105,6 +110,12 @@ export default function MyServicesPage() {
   };
 
   const closeEdit = () => setEditingService(null);
+  const { dialogRef: editDialogRef, onKeyDown: onEditDialogKeyDown } =
+    useAccessibleDialog<HTMLDivElement>(
+      Boolean(editingService),
+      closeEdit,
+      !isProcessing
+    );
 
   /** Saves the edit. The server whitelists fields and resets approval. */
   const handleSaveEdit = async (event: React.FormEvent) => {
@@ -397,14 +408,23 @@ export default function MyServicesPage() {
       {/* Edit Service Modal */}
       {editingService && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 bg-black/50">
-          <div className="my-8 w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl border border-slate-200">
+          <div
+            ref={editDialogRef}
+            onKeyDown={onEditDialogKeyDown}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="technician-edit-service-title"
+            tabIndex={-1}
+            className="my-8 w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl border border-slate-200"
+          >
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
-              <h3 className="text-lg font-bold text-slate-900">
+              <h3 id="technician-edit-service-title" className="text-lg font-bold text-slate-900">
                 Edit Repair Service
               </h3>
               <button
                 type="button"
                 onClick={closeEdit}
+                disabled={isProcessing}
                 className="text-slate-400 hover:text-slate-600"
                 aria-label="Close edit dialog"
               >
@@ -526,7 +546,12 @@ export default function MyServicesPage() {
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <Button type="button" variant="outline" onClick={closeEdit}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeEdit}
+                  disabled={isProcessing}
+                >
                   Cancel
                 </Button>
                 <Button

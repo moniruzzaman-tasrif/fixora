@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -23,14 +22,13 @@ import {
   Wrench,
   Users,
   ShieldCheck,
-  ExternalLink,
 } from "lucide-react";
-import { User, UserRole } from "@/types";
-import { ROLE_DASHBOARD_ROUTES, ROLE_LABELS, ROLE_BADGE_VARIANTS } from "@/lib/constants";
+import { User } from "@/types";
+import { ROLE_DASHBOARD_ROUTES, ROLE_BADGE_VARIANTS } from "@/lib/constants";
 
 interface UserNavProps {
   user: User;
-  onSignOut?: () => void;
+  onSignOut: () => void;
 }
 
 export function UserNav({ user, onSignOut }: UserNavProps) {
@@ -47,14 +45,6 @@ export function UserNav({ user, onSignOut }: UserNavProps) {
 
   const dashboardHref = ROLE_DASHBOARD_ROUTES[user.role] || "/dashboard/customer";
   const roleBadge = ROLE_BADGE_VARIANTS[user.role];
-
-  const handleSignOut = () => {
-    if (onSignOut) {
-      onSignOut();
-    } else {
-      router.push("/sign-in");
-    }
-  };
 
   return (
     <div className="flex items-center gap-2">
@@ -180,7 +170,7 @@ export function UserNav({ user, onSignOut }: UserNavProps) {
           <DropdownMenuItem
             variant="destructive"
             className="cursor-pointer gap-2.5 py-2 text-red-600 focus:bg-red-50 focus:text-red-700 font-medium"
-            onClick={handleSignOut}
+            onClick={onSignOut}
           >
             <LogOut className="size-4" />
             <span>Sign Out</span>

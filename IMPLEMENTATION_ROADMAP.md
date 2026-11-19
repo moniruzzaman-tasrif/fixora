@@ -3,8 +3,8 @@
 **Project:** Fixora — Smart Device & Home Appliance Repair Service Platform
 **Tagline:** Your Home, Our Responsibility.
 **Assignment:** Assignment 9 — Category 006
-**Last updated:** 17 November 2026 (aligned with `AGENTS.md` §4 and the current repo)
-**Current phase:** Phase 1 complete — Step 2 is **not approved yet**
+**Last updated:** Full frontend and `fixora-server` audit
+**Current phase:** Full audit complete; live customer/admin/payment verification remains blocked as detailed below
 
 > Read [`AGENTS.md`](./AGENTS.md) first. It is the highest-priority project
 > instruction and the source of truth for the stack, design system, database, API
@@ -37,117 +37,71 @@ Legend: **AI** = frontend/documentation work for the AI agent ·
 
 ---
 
-## 1. Codebase Audit (actual results, 17 Nov 2026)
+## 1. Codebase Audit (latest verified results)
 
-The repository is a **fresh `create-next-app` project with shadcn initialized**.
-One commit exists (`Initial commit from Create Next App`). TypeScript passes.
-No application features, APIs, auth, database, or environment files exist yet.
+This is an implemented Fixora frontend backed by the sibling [`fixora-server`](../fixora-server)
+Express application and the existing MongoDB collections. Runtime application data
+uses the BetterAuth session and server API; this audit added no seed, dummy, or test
+records and made no database mutations. The former starter-project audit below has
+been replaced with the current verified state.
 
-### A. Already implemented
+### A. Verified implementation
 
-| Item | Evidence |
+| Area | Result and evidence |
 | --- | --- |
-| Next.js 16.4.6 App Router + React 19.3 + TypeScript strict | `package.json`, `tsconfig.json` |
-| Tailwind CSS v4 via `@tailwindcss/turbopack` | `package.json`, `next.config.ts`, `globals.css` |
-| shadcn UI initialized (style `base-nova`, Base UI primitives, `cn` util) | `components.json`, `src/components/ui/button.tsx`, `src/lib/utils.ts` |
-| `Button` component | `src/components/ui/button.tsx` |
-| Icons (`lucide-react`, `react-icons`) | `package.json` |
-| Toast library (`sonner`) installed, not mounted | `package.json` |
-| `next-themes` installed, unused | `package.json` |
-| Geist Sans / Geist Mono loaded | `src/app/layout.tsx` |
-| Root layout, global CSS, starter home page | `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css` |
-| ESLint 9 + Next config, React Compiler + cache components flags | `eslint.config.mjs`, `next.config.ts` |
-| Git repo, package named `fixora` | `.git`, `package.json` |
+| Public and dashboard navigation | Responsive home, services, about, and role-based dashboard shells are present. Browser checks at 360, 768, 1024, and 1440 px found no horizontal overflow. |
+| Authentication | BetterAuth session user and role are used; role selection excludes admin; signed-in sign-in/sign-up redirects and a technician cross-role redirect were browser-checked. |
+| Home and services | Home requests the latest six services; public service queries require approved and available services. Search/filter/sort query state and back/forward navigation were browser-checked. |
+| Details and bookings | Service detail lookup and the customer request flow are implemented. The server validates booking data and has a unique partial index for active customer/service requests; booking construction is unit-tested. |
+| Dashboards | Customer, technician, and admin API-backed routes exist. A live technician session and dashboard loaded; customer/admin live actions were not tested without authorized accounts. |
+| Stripe | Hosted Checkout creation, verification, idempotency handling, and success/cancel UI exist. Payment helper tests and the unique `stripeSessionId` index were verified; no payment was initiated. |
+| Errors and dialogs | Error/404 UI and keyboard-accessible confirmation/details/completion dialogs are present. Browser checks covered invalid-service 404, payment-cancel UI, focus handling, and Escape dismissal. |
+| Documentation | README now describes the sibling server, current run/configuration instructions, and known submission dependencies. |
 
-### B. Partially implemented
+### B. Changes made in this audit
 
-| Item | What exists | What is missing / broken |
-| --- | --- | --- |
-| Branding | `package.json` name is `fixora` | Default metadata ("Create Next App"), default favicon, default README, no logo |
-| Design tokens | Neutral shadcn tokens, dark variants | No Fixora teal/amber palette, no brand/status tokens, radius untuned |
-| Typography | Geist fonts loaded | `--font-sans: var(--font-sans)` is a circular reference; heading scale undefined |
-| Layout shell | Root layout only | No public navbar/footer, no auth layout, no dashboard shell |
-| UI kit | Only `Button` | No card, input, label, textarea, select, badge, dialog, alert-dialog, sheet, table, skeleton, avatar, separator, dropdown, switch |
-| Dependencies | `better-auth`, `next-themes`, `sonner` installed | None are configured/mounted; `pdf-parse` is unused |
-| Documentation | Default README | No project README, no AGENTS rules (now fixed), no roadmap (now fixed) |
+- The home request now asks the server for six newest public services, and the API
+  applies a bounded limit after its approved/available filter.
+- Booking construction stores the preferred date as a MongoDB `Date` and copies
+  service and authenticated-customer fields; a focused unit test covers the mapping.
+- Mongo configuration accepts the existing `MONGODB_URL` or `MONGODB_URI`.
+- Authentication and navigation accessibility/error handling, modal keyboard
+  behavior, mobile dashboard identity/Home access, and inaccurate copy were fixed.
+- README and this audit summary were aligned with the actual server and current
+  verification results.
 
-### C. Missing (all application features)
+### C. Test results
 
-- Public pages: home, services listing, service details, about.
-- Auth UI: sign-up, sign-in, role selection, password rules.
-- Dashboards: customer (3 routes), technician (4), admin (5), shared profile.
-- Payment pages: `/payment/success`, `/payment/cancel`.
-- App states: `loading.tsx`, `error.tsx`, `global-error.tsx`, `not-found.tsx`.
-- All shared components: navbar, footer, sidebar, topbar, cards, tables, badges,
-  modals, stat cards, charts, empty states, skeletons.
-- Shared types + constants/format/validation helpers; runtime records come from
-  the session/API.
-- README, environment documentation, deployment configuration.
-- Owner-side backend: Express, MongoDB, BetterAuth, JWT, APIs, ImgBB, and Stripe.
+- Frontend `npx tsc --noEmit`: passed.
+- Frontend `npm run lint`: passed with two warnings (unused `Badge` in
+  `service-card.tsx`; unused `_ignored` in `auth.ts`).
+- Frontend `npm run build`: passed.
+- `fixora-server` `npm test`: 18 passed; `node --check index.js` and
+  `node --check booking-flow.js`: passed.
+- `git diff --check`: passed in both repositories.
+- Root `npm test`: blocked because its existing script references the deleted
+  `test/admin-metrics.test.mjs`; that pre-existing deletion was preserved.
 
-### D. Needs verification (do not assume)
+### D. Live verification blockers and data integrity
 
-- `shadcn add` compatibility with the `base-nova` (Base UI) style and Tailwind v4 —
-  verify in Step 2 before generating many components.
-- Behaviour of `cacheComponents: true` once real API data is introduced.
-- Visual/functional state of the app at 360px width (no pages exist yet).
+- The live database currently has 22 services, all `pending`; the public API
+  correctly returns no browseable services. No service was automatically approved.
+  Valid service details, customer booking, and admin approval could not be exercised
+  without an approved service and authorized customer/admin access.
+- The database uses the existing singular `booking` collection. It was preserved;
+  no schema migration or record reset was performed.
+- No customer/admin credentials were available. No Checkout session or payment was
+  created, and no webhook was delivered; `STRIPE_WEBHOOK_SECRET` is not configured.
+- Existing bookings labelled “QA Customer” predate this audit and were not altered;
+  their ownership/purpose must be confirmed before cleanup.
+- The repositories have no configured Git remotes. Assignment submission commit
+  counts and live deployment checks remain owner-side work.
+- An existing `.env.local` was neither created nor changed in this audit. No secret
+  values were read into the report.
 
-### E. Known issues to resolve later
-
-1. **Circular font token** in `globals.css` (`--font-sans: var(--font-sans)`).
-   Fix in Step 2 by mapping to `var(--font-geist-sans)`.
-2. Only `Button` exists in the UI kit — Step 2 adds the rest.
-3. `<Toaster />` is not mounted — Step 2 adds it to the root layout.
-4. Default metadata/favicon/README — Steps 2 and 22.
-5. Dashboard routes will be publicly reachable until the owner adds real route
-   protection. That is expected; the AI must not fake auth guards.
-
-### F. Verified technology baseline (aligned with AGENTS.md §4)
-
-**Installed and to be preserved**
-
-| Area | Actual setup |
-| --- | --- |
-| Framework | Next.js `16.4.6`, App Router, `cacheComponents: true`, `partialPrefetching: true`, React Compiler on |
-| Runtime | Node.js `24.13.0`, npm `11.6.2` |
-| Language | TypeScript 5, `strict: true`, path alias `@/*` → `src/*` |
-| UI | React `19.3.0` |
-| Styling | Tailwind CSS `4.3.3` via `@tailwindcss/turbopack` (CSS-first; **no** `tailwind.config.js`) |
-| Components | shadcn CLI `4.23.0`, style **base-nova**, **Base UI** (`@base-ui/react`) — not Radix |
-| Class merging | `cn` package (`src/lib/utils.ts`), not `clsx` + `tailwind-merge` |
-| Icons | `lucide-react` (primary), `react-icons` (sparingly) |
-| Notifications | `sonner` installed; not mounted yet |
-| Theming | `next-themes` installed; no provider/toggle yet |
-| Auth client | `better-auth` installed; **unconfigured (owner)** |
-| Lint | ESLint 9 + `eslint-config-next` |
-
-**Owner-implemented stack (never built by the AI)**
-
-Express.js, MongoDB, BetterAuth MongoDB adapter, JWT, ImgBB, Stripe Checkout,
-Stripe webhook, Vercel (frontend), Node hosting (backend).
-
-**Explicit non-goals for the frontend**
-
-- Do not introduce HeroUI, DaisyUI, Radix, Chakra, MUI, styled-components, or a
-  second design system.
-- Do not add a chart library (`recharts`, etc.); charts are CSS/SVG.
-- Do not add a form library (`react-hook-form`, `zod`, etc.); validation helpers only.
-- Do not add a date library; use the built-in `Intl` formatters.
-- Do not switch to JavaScript, Pages Router, or Tailwind v3.
-- Do not create `middleware.ts`; the owner uses Next.js 16 `proxy.ts`.
-- Do not edit generated files under `src/components/ui/` (except a genuine bug,
-  reported first).
-
-**Next.js 16 platform rules to respect (AGENTS.md §16)**
-
-- Follow the global `PageProps<...>` / `LayoutProps<...>` helpers already used in
-  `src/app/layout.tsx`.
-- With `cacheComponents: true`, unhandled uncached server data blocks prerendering.
-  Follow the bundled Next.js data-fetching guidance for API-backed pages.
-- React Compiler is on: follow the Rules of React; no manual memo hacks.
-- Tailwind v4 is CSS-first: all tokens go in `globals.css` via `@theme`.
-- Base UI components may expose different props than Radix; inspect generated code.
-- `cn` is imported from `@/lib/utils`, which re-exports the `cn` package.
+The staged plan below remains the project’s original sequencing guide. The explicit
+full-audit authorization applied to this audit; future work must still follow the
+owner’s step approvals in [`AGENTS.md`](./AGENTS.md).
 
 ---
 
@@ -199,9 +153,11 @@ Steps 8, 17 and 19 are therefore **partially** real for the customer role:
 - [x] **Stripe plumbing (UI + server)** — `POST /payments/create-checkout-session`,
   `GET /payments/verify`, `POST /payments/webhook` (raw body + HMAC signature check),
   `/payment/success` and `/payment/cancel` pages.
-- [ ] **BLOCKED: live Stripe** — `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` are
-  empty, so checkout/verify return an honest `503`. Webhook signature logic is
-  implemented but has not been exercised against a real Stripe event.
+- [x] **Stripe test configuration** — a test-mode secret is configured, MongoDB has
+  the unique `stripeSessionId` index, and one completed/unpaid booking is eligible.
+  No Checkout Session or payment was created during this audit.
+- [ ] **BLOCKED: Stripe webhook delivery** — `STRIPE_WEBHOOK_SECRET` is not
+  configured, so the endpoint correctly returns `503`; no signed event was tested.
 - [ ] **Service approval gate** — booking currently enforces `isAvailable` only, not
   `approvalStatus === "approved"`, was still listed in the earlier audit.
 - [x] **Service approval gate** — public listing and service detail endpoints now
@@ -228,9 +184,22 @@ Steps 8, 17 and 19 are therefore **partially** real for the customer role:
 | Authentication | PARTIAL | BetterAuth UI/session is implemented; external OAuth credentials and Express/BetterAuth env setup remain manual |
 | Authorization | PASS | JWT bridge, role middleware, ownership checks, and role/self-role protections |
 | ImgBB | PARTIAL | Frontend and server upload implementations exist; live upload requires `IMGBB_API_KEY` |
-| Stripe | BLOCKED | Checkout, verification, and webhook code exist; live credentials and a configured webhook secret are required |
+| Stripe | PARTIAL | Test-mode secret and unique session index are configured; one eligible booking exists; webhook secret and live Checkout verification are still pending |
 | Database | PARTIAL | Express/MongoDB models and relationships exist; live Atlas/local MongoDB connection setup remains manual |
 | Responsive UI | PASS | Existing responsive tables/cards and mobile dashboard layout; visual browser testing not yet recorded |
+
+### Step 1 follow-up — confirmed audit gaps (19 November 2026)
+
+- [x] Added route and root error boundaries, and a Fixora repair-tools 404.
+- [x] Redirected signed-in users away from sign-in/sign-up to their role dashboard.
+- [x] Guarded role-specific dashboard data requests until the active session role
+      matches, preventing protected API calls before the UX redirect.
+- [x] Added a latest-services homepage section and aligned its repair flow to four steps.
+- [x] Added the footer Home link and social platform links; no unverified contact details or Fixora social handles were invented.
+- [x] Made service filters URL-driven across initial load and browser back/forward.
+- [x] Removed unsupported booking-card claims and mapped the semantic primary token to Fixora teal.
+- [x] Added a unique partial MongoDB index for active customer/service bookings and mapped index collisions to the existing 409 response.
+- [ ] Verify visible homepage service cards — blocked because the database currently has 22 pending services and no approved, available services. No records were changed.
 
 ---
 
@@ -1074,6 +1043,14 @@ confirmation steps.
 - Test card `4242 4242 4242 4242` (owner testing only).
 - Payment pages live under the `(public)` route group (navbar + footer) per
   AGENTS.md §8; access control is still the owner's responsibility.
+
+**Current integration status:** The Express server is maintained in the sibling
+`../fixora-server` workspace. It creates Checkout sessions only with a Stripe test
+secret, derives the amount from `finalAmount`, and handles duplicate session inserts
+using the existing unique `stripeSessionId` index. Automated payment-flow tests use
+fixtures and do not contact Stripe or write to MongoDB. One eligible real booking was
+confirmed read-only; a live test Checkout was not started. Webhook delivery remains
+blocked until `STRIPE_WEBHOOK_SECRET` is configured.
 
 **Runtime data:** payment state is displayed only after the backend verifies the
 real Stripe session and returns a recorded payment.

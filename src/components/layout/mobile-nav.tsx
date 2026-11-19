@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 interface MobileNavProps {
   user: User | null;
-  onSignOut?: () => void;
+  onSignOut: () => void;
 }
 
 export function MobileNav({ user, onSignOut }: MobileNavProps) {
@@ -272,7 +272,7 @@ export function MobileNav({ user, onSignOut }: MobileNavProps) {
               className="w-full text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200 justify-center gap-2"
               onClick={() => {
                 closeSheet();
-                if (onSignOut) onSignOut();
+                onSignOut();
               }}
             >
               <LogOut className="size-4" />
