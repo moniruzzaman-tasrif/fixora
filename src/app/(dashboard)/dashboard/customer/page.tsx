@@ -8,8 +8,10 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { MiniBarChart, MiniDonutChart } from "@/components/shared/mini-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DUMMY_BOOKINGS } from "@/data/bookings";
+import { Booking } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
+import getBooking from "@/lib/action/dataGet/getBooking";
+import { useCurrentUser } from "@/lib/session";
 import {
   CalendarCheck,
   Clock,
@@ -21,11 +23,30 @@ import {
 } from "lucide-react";
 
 export default function CustomerDashboardPage() {
-  // Filter bookings for current demo customer
-  // TODO(owner): replace with API call: GET /api/bookings/my
-  const myBookings = DUMMY_BOOKINGS.filter(
-    (b) => b.customerEmail === "rahim.customer@fixora.com"
-  );
+  const { user } = useCurrentUser();
+  const [allBookings, setAllBookings] = React.useState<Booking[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getBooking()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setAllBookings(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load customer dashboard bookings:", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const email = user?.email?.toLowerCase();
+  const myBookings = email
+    ? allBookings.filter((b) => b.customerEmail?.toLowerCase() === email)
+    : allBookings;
 
   const totalRequests = myBookings.length;
   const activeJobs = myBookings.filter((b) =>

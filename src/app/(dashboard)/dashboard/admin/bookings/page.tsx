@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { DUMMY_BOOKINGS } from "@/data/bookings";
 import { Booking, BookingStatus } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
+import getBooking from "@/lib/action/dataGet/getBooking";
 import { cn } from "@/lib/utils";
 import {
   CalendarCheck,
@@ -27,7 +27,25 @@ import {
 } from "lucide-react";
 
 export default function AdminBookingsPage() {
-  const [bookings] = React.useState<Booking[]>(DUMMY_BOOKINGS);
+  const [bookings, setBookings] = React.useState<Booking[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getBooking()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setBookings(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load admin bookings from database:", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedBooking, setSelectedBooking] = React.useState<Booking | null>(null);

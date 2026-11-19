@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DUMMY_USERS } from "@/data/users";
-import { DUMMY_BOOKINGS } from "@/data/bookings";
 import { DUMMY_PAYMENTS } from "@/data/payments";
-import { Service } from "@/types";
+import { Service, Booking } from "@/types";
 import getService from "@/lib/action/dataGet/getService";
+import getBooking from "@/lib/action/dataGet/getBooking";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import {
@@ -32,6 +32,7 @@ import {
 export default function AdminDashboardPage() {
   // Real services from database
   const [services, setServices] = React.useState<Service[]>([]);
+  const [bookings, setBookings] = React.useState<Booking[]>([]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -43,6 +44,16 @@ export default function AdminDashboardPage() {
       })
       .catch((err) => {
         console.error("Failed to load admin dashboard services:", err);
+      });
+
+    getBooking()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setBookings(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load admin dashboard bookings:", err);
       });
 
     return () => {
@@ -58,8 +69,8 @@ export default function AdminDashboardPage() {
   const pendingServices = services.filter((s) => s.approvalStatus === "pending");
   const approvedServices = services.filter((s) => s.approvalStatus === "approved");
 
-  const totalBookings = DUMMY_BOOKINGS.length;
-  const activeBookings = DUMMY_BOOKINGS.filter((b) =>
+  const totalBookings = bookings.length;
+  const activeBookings = bookings.filter((b) =>
     ["requested", "accepted", "in-progress"].includes(b.status)
   ).length;
 
@@ -314,14 +325,14 @@ export default function AdminDashboardPage() {
               href="/dashboard/admin/bookings"
               className="text-xs font-semibold text-teal-700 hover:text-teal-800 flex items-center gap-1 hover:underline"
             >
-              View All ({DUMMY_BOOKINGS.length})
+              View All ({bookings.length})
               <ArrowRight className="size-3" />
             </Link>
           </CardHeader>
 
           <CardContent className="p-0">
             <div className="divide-y divide-slate-100">
-              {DUMMY_BOOKINGS.slice(0, 4).map((booking) => (
+              {bookings.slice(0, 4).map((booking) => (
                 <div
                   key={booking._id}
                   className="flex items-center justify-between p-4 gap-3 hover:bg-slate-50/70 transition-colors"

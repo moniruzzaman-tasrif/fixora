@@ -8,9 +8,10 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const normalizedKey = status.toLowerCase() as keyof typeof STATUS_COLORS;
+  const safeStatus = (status || "requested").toString();
+  const normalizedKey = safeStatus.toLowerCase() as keyof typeof STATUS_COLORS;
   const config = STATUS_COLORS[normalizedKey] || {
-    label: status,
+    label: safeStatus,
     className: "bg-slate-100 text-slate-700 border-slate-200",
   };
 

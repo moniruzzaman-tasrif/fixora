@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { DUMMY_BOOKINGS } from "@/data/bookings";
 import { Booking, BookingStatus } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
+import getBooking from "@/lib/action/dataGet/getBooking";
+import { useCurrentUser } from "@/lib/session";
 import {
   Check,
   XCircle,
@@ -26,10 +27,29 @@ import {
 } from "lucide-react";
 
 export default function TechnicianRequestsPage() {
-  // TODO(owner): replace with API call: GET /api/bookings/technician
-  const [requests, setRequests] = React.useState<Booking[]>(() =>
-    DUMMY_BOOKINGS.filter((b) => b.technicianEmail === "tanvir.tech@fixora.com")
-  );
+  const { user } = useCurrentUser();
+  const [requests, setRequests] = React.useState<Booking[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getBooking()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          const email = user?.email?.toLowerCase();
+          const filtered = email
+            ? data.filter((b) => b.technicianEmail?.toLowerCase() === email)
+            : data;
+          setRequests(filtered);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch technician requests from database:", err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email]);
 
   const [activeTab, setActiveTab] = React.useState<string>("all");
   const [rejectModalBooking, setRejectModalBooking] = React.useState<Booking | null>(null);

@@ -8,10 +8,10 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { MiniBarChart, MiniDonutChart } from "@/components/shared/mini-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Service } from "@/types";
-import { DUMMY_BOOKINGS } from "@/data/bookings";
+import { Service, Booking } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 import getService from "@/lib/action/dataGet/getService";
+import getBooking from "@/lib/action/dataGet/getBooking";
 import { useCurrentUser } from "@/lib/session";
 import {
   Wrench,
@@ -25,6 +25,7 @@ import {
 export default function TechnicianDashboardPage() {
   const { user } = useCurrentUser();
   const [services, setServices] = React.useState<Service[]>([]);
+  const [bookings, setBookings] = React.useState<Booking[]>([]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -38,6 +39,16 @@ export default function TechnicianDashboardPage() {
         console.error("Failed to load technician dashboard services:", err);
       });
 
+    getBooking()
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) {
+          setBookings(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load technician dashboard bookings:", err);
+      });
+
     return () => {
       cancelled = true;
     };
@@ -48,9 +59,9 @@ export default function TechnicianDashboardPage() {
     ? services.filter((s) => s.technicianEmail?.toLowerCase() === email)
     : services;
 
-  const myRequests = DUMMY_BOOKINGS.filter(
-    (b) => !email || b.technicianEmail?.toLowerCase() === email
-  );
+  const myRequests = email
+    ? bookings.filter((b) => b.technicianEmail?.toLowerCase() === email)
+    : bookings;
 
   const totalServices = myServices.length;
   const approvedServices = myServices.filter(
