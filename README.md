@@ -22,6 +22,10 @@ npm run dev
 
 The frontend runs at `http://localhost:3000` and the API at
 `http://localhost:5000`.
+Both applications must connect to the same MongoDB deployment and the `fixora`
+database. BetterAuth's original `user` collection is the single source of user
+records; the Express API accesses that collection for profile and admin-user
+operations.
 
 ## Required environment variables
 

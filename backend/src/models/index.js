@@ -1,16 +1,4 @@
 import mongoose from "mongoose";
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: false, default: "" },
-  image: String,
-  role: { type: String, enum: ["customer","technician","admin"], default: "customer" },
-  phone: String,
-  area: String,
-  bio: String,
-  createdAt: { type: Date, default: Date.now }
-});
-export const User = mongoose.model("User", userSchema);
 export const Service = mongoose.model("Service", new mongoose.Schema({
   title: { type: String, required: true },
   category: { type: String, required: true },

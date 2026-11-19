@@ -2,7 +2,6 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import { connectDB } from "./config/db.js";
-import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import serviceRoutes from "./routes/services.js";
 import bookingRoutes from "./routes/bookings.js";
@@ -15,7 +14,6 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use("/payments/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
-app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/bookings", bookingRoutes);
@@ -33,6 +31,6 @@ app.use("/users", userRoutes);
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 const port = process.env.PORT || 5000;
-connectDB(process.env.MONGODB_URI).then(() => {
+connectDB(process.env.MONGODB_URI || process.env.MONGODB_URL).then(() => {
   app.listen(port, () => console.log(`Backend on ${port}`));
 });

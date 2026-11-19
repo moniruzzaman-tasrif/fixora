@@ -6,8 +6,19 @@ export function verifyToken(req,res,next){
   const token = h.split(" ")[1];
   const secret=process.env.JWT_SECRET||process.env.BETTER_AUTH_SECRET;
   if(!secret) return res.status(500).json({message:"Authentication secret is not configured"});
-  try { req.user = jwt.verify(token, secret); next(); }
-  catch { return res.status(401).json({message:"Invalid token"}); }
+  let identity;
+  try {
+    identity=jwt.verify(token, secret);
+  } catch {
+    return res.status(401).json({message:"Invalid token"});
+  }
+  if(typeof identity!=="object"||identity===null||
+    typeof identity.id!=="string"||typeof identity.email!=="string"||
+    !["customer","technician","admin"].includes(identity.role)){
+    return res.status(401).json({message:"Invalid user identity"});
+  }
+  req.user=identity;
+  next();
 }
 export function verifyCustomer(req,res,next){ if(req.user.role!=="customer") return res.status(403).json({message:"Forbidden"}); next(); }
 export function verifyTechnician(req,res,next){ if(req.user.role!=="technician") return res.status(403).json({message:"Forbidden"}); next(); }

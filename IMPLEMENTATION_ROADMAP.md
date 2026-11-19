@@ -1271,7 +1271,7 @@ fail later; prepare an `error` prop message area.
 
 ### 5.2 Collections (exactly four)
 
-- [ ] `users` via BetterAuth adapter + additional fields (`role`, `phone`, `area`,
+- [ ] `user` via BetterAuth adapter + additional fields (`role`, `phone`, `area`,
       `bio`); admin inserted manually.
 - [ ] `services` (fields per AGENTS.md §11).
 - [ ] `bookings` (copied service/technician data, statuses, finalAmount,

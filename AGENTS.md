@@ -450,14 +450,16 @@ from dummy data. They are presentational UI only.
 
 ## 11. Database Reference — 4 Collections
 
-Exactly four application collections. BetterAuth's own auth collections (users,
+Exactly four application collections. BetterAuth's own auth collections (user,
 session, account, verification) are not counted; its **user collection is the
 application users collection** — do not create a duplicate.
 
-### 1. `users` (BetterAuth + additional fields)
+### 1. `user` (BetterAuth collection + additional fields)
 
 `_id`, `name`, `email` (unique, links data across collections), `image`, `role`
 (`customer` | `technician` | `admin`, default `customer`), `phone`, `area`, `bio`.
+Keep BetterAuth's default MongoDB collection name `user`; do not override it to
+`users` or create a separate Mongoose user collection.
 
 ### 2. `services`
 
