@@ -2,13 +2,18 @@ import { Service } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+/**
+ * Reads services from the Express API.
+ * `query` is a raw search string (without the leading `?`), e.g.
+ * `category=AC&sort=price-low`.
+ */
 const getService = async (query = ""): Promise<Service[]> => {
   const cleanQuery = query.replace(/^\?/, "").trim();
-  const url = cleanQuery ? `${API_URL}/services?${cleanQuery}` : `${API_URL}/services`;
+  const url = cleanQuery
+    ? `${API_URL}/services?${cleanQuery}`
+    : `${API_URL}/services`;
 
-  const res = await fetch(url, {
-    cache: "no-store",
-  });
+  const res = await fetch(url, { cache: "no-store" });
 
   if (!res.ok) {
     throw new Error(`Failed to fetch services (HTTP ${res.status})`);

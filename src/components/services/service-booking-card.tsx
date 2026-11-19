@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AlertCircle } from "lucide-react";
-import bookingPost from "@/lib/action/api/bookingPost";
+import { ApiError } from "@/lib/api";
+import { createBooking } from "@/lib/action/api/customerApi";
 
 interface ServiceBookingCardProps {
   service: Service;
@@ -21,17 +22,15 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
   const router = useRouter();
   const { user } = useCurrentUser();
 
-  const [customerPhone, setCustomerPhone] = React.useState("");
-  const [customerAddress, setCustomerAddress] = React.useState("");
+  const [phoneInput, setPhoneInput] = React.useState<string | null>(null);
+  const [addressInput, setAddressInput] = React.useState<string | null>(null);
   const [preferredDate, setPreferredDate] = React.useState("");
   const [problemDescription, setProblemDescription] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Pre-fill user profile info if logged in
-  React.useEffect(() => {
-    if (user?.phone) setCustomerPhone(user.phone);
-    if (user?.area) setCustomerAddress(user.area);
-  }, [user]);
+  // Profile values pre-fill the form until the customer edits them.
+  const customerPhone = phoneInput ?? user?.phone ?? "";
+  const customerAddress = addressInput ?? user?.area ?? "";
 
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,35 +50,35 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
       return;
     }
 
+    if (new Date(preferredDate) < new Date(new Date().toDateString())) {
+      toast.error("Please choose today or a future date for the visit.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const payload = {
+      // The server owns price, technician, status and payment status; it reads
+      // them from the service document and the BetterAuth session.
+      const result = await createBooking({
         serviceId: service._id,
-        serviceTitle: service.title,
-        serviceImage: service.image,
-        category: service.category,
-        basePrice: service.basePrice,
-        technicianName: service.technicianName,
-        technicianEmail: service.technicianEmail,
-        customerName: user.name,
-        customerEmail: user.email,
         customerPhone,
         address: customerAddress,
         preferredDate,
         problemDescription,
-      };
-
-      const bokkingData = await bookingPost(payload);
-      // Seam / simulation for booking creation
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      });
 
       toast.success(
-        "Repair request sent! The technician will review and update the status shortly."
+        result.message ||
+          "Repair request sent! The technician will review and update the status shortly."
       );
       router.push("/dashboard/customer/bookings");
-    } catch {
-      toast.error("Failed to send booking request. Please try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "Failed to send booking request. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -143,7 +142,7 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
               type="tel"
               placeholder="e.g. +880 1700-000000"
               value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
+              onChange={(e) => setPhoneInput(e.target.value)}
               required
               className="text-xs h-10"
             />
@@ -159,7 +158,7 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
               type="text"
               placeholder="House, Road, Area (e.g. House 12, Road 4, Mirpur 10)"
               value={customerAddress}
-              onChange={(e) => setCustomerAddress(e.target.value)}
+              onChange={(e) => setAddressInput(e.target.value)}
               required
               className="text-xs h-10"
             />

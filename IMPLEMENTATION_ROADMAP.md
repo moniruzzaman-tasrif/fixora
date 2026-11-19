@@ -172,6 +172,35 @@ Stripe webhook, Vercel (frontend), Node hosting (backend).
 **Backend scope (§5) is tracked separately and belongs to the owner.** It can run
 in parallel after Step 7, but integration starts only after Step 12.
 
+### Integration status — 19 Nov 2026 (owner-approved backend work)
+
+The customer flow now reads and writes real MongoDB data through the Express API.
+Steps 8, 17 and 19 are therefore **partially** real for the customer role:
+
+- [x] **Customer overview** — `GET /booking/mine`; total / active / completed counts
+  come from the session's own bookings; loading, error, empty states; charts derived
+  from real data.
+- [x] **Customer bookings** — real rows (image, title, technician, preferred date,
+  base/final amount, all six statuses, unpaid/paid), desktop table + mobile cards.
+- [x] **Cancellation** — `PATCH /booking/:id/cancel`; server checks ownership and
+  `requested`; confirmation dialog; list + counts refresh; repeat/foreign cancel
+  rejected with 409/403.
+- [x] **Payment history** — `GET /payments/mine`; own records only, newest first,
+  loading / error / empty states.
+- [x] **Booking creation** — `POST /booking`; price, technician, status and payment
+  status are read from the service document + session, never from the browser.
+- [x] **Stripe plumbing (UI + server)** — `POST /payments/create-checkout-session`,
+  `GET /payments/verify`, `POST /payments/webhook` (raw body + HMAC signature check),
+  `/payment/success` and `/payment/cancel` pages.
+- [ ] **BLOCKED: live Stripe** — `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` are
+  empty, so checkout/verify return an honest `503`. Webhook signature logic is
+  implemented but has not been exercised against a real Stripe event.
+- [ ] **Service approval gate** — booking currently enforces `isAvailable` only, not
+  `approvalStatus === "approved"`, because no admin approval workflow is wired yet.
+- [ ] **Technician / admin dashboards** — still on dummy data; their APIs
+  (`PATCH /booking/:id/status`, `PATCH /admin/services/:id/approval`) exist and are
+  tested, but the pages are not connected.
+
 ---
 
 ## 3. Recommended Development Sequence

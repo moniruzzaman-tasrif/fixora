@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Suspense } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,34 @@ interface ServiceDetailsPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ServiceDetailsPage({ params }: ServiceDetailsPageProps) {
+export default function ServiceDetailsPage({ params }: ServiceDetailsPageProps) {
+  return (
+    <Suspense fallback={<ServiceDetailsSkeleton />}>
+      <ServiceDetailsContent params={params} />
+    </Suspense>
+  );
+}
+
+function ServiceDetailsSkeleton() {
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7 space-y-4">
+            <div className="aspect-16/10 w-full animate-pulse rounded-2xl bg-slate-200" />
+            <div className="h-8 w-2/3 animate-pulse rounded bg-slate-200" />
+            <div className="h-24 w-full animate-pulse rounded-xl bg-slate-100" />
+          </div>
+          <div className="lg:col-span-5">
+            <div className="h-80 w-full animate-pulse rounded-2xl bg-slate-200" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function ServiceDetailsContent({ params }: ServiceDetailsPageProps) {
   const { id } = await params;
   const data = await OneGetData(id);
 

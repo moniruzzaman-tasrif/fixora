@@ -5,12 +5,13 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { EmptyState } from "@/components/shared/empty-state";
 import { MiniBarChart, MiniDonutChart } from "@/components/shared/mini-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Booking } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
-import getBooking from "@/lib/action/dataGet/getBooking";
+import { getMyBookings } from "@/lib/action/api/customerApi";
 import { useCurrentUser } from "@/lib/session";
 import {
   CalendarCheck,
@@ -20,61 +21,101 @@ import {
   ArrowRight,
   CreditCard,
   Wrench,
+  AlertCircle,
 } from "lucide-react";
 
+const ACTIVE_STATUSES = ["requested", "accepted", "in-progress"];
+
+function buildMonthlyActivity(bookings: Booking[]) {
+  const now = new Date();
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+    return {
+      key: `${date.getFullYear()}-${date.getMonth()}`,
+      label: date.toLocaleString("en-US", { month: "short" }),
+      value: 0,
+      highlight: index === 5,
+    };
+  });
+
+  for (const booking of bookings) {
+    const raw = booking.createdAt || booking.preferredDate;
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) continue;
+
+    const month = months.find(
+      (item) => item.key === `${date.getFullYear()}-${date.getMonth()}`
+    );
+    if (month) month.value += 1;
+  }
+
+  return months;
+}
+
 export default function CustomerDashboardPage() {
-  const { user } = useCurrentUser();
-  const [allBookings, setAllBookings] = React.useState<Booking[]>([]);
+  const { user, isPending } = useCurrentUser();
+
+  const [bookings, setBookings] = React.useState<Booking[]>([]);
+  const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
+    "loading"
+  );
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
+    if (isPending || !user?._id) return;
+
     let cancelled = false;
-    getBooking()
+
+    getMyBookings()
       .then((data) => {
-        if (!cancelled && Array.isArray(data)) {
-          setAllBookings(data);
-        }
+        if (cancelled) return;
+        setBookings(Array.isArray(data) ? data : []);
+        setLoadState("ready");
       })
-      .catch((err) => {
-        console.error("Failed to load customer dashboard bookings:", err);
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load customer dashboard bookings:", error);
+        setLoadState("error");
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isPending, user?._id, reloadKey]);
 
-  const email = user?.email?.toLowerCase();
-  const myBookings = email
-    ? allBookings.filter((b) => b.customerEmail?.toLowerCase() === email)
-    : allBookings;
+  const handleRetry = () => {
+    setLoadState("loading");
+    setReloadKey((key) => key + 1);
+  };
 
-  const totalRequests = myBookings.length;
-  const activeJobs = myBookings.filter((b) =>
-    ["requested", "accepted", "in-progress"].includes(b.status)
+  const isLoading = isPending || loadState === "loading";
+
+  const totalRequests = bookings.length;
+  const activeJobs = bookings.filter((b) =>
+    ACTIVE_STATUSES.includes(b.status)
   ).length;
-  const completedJobs = myBookings.filter((b) => b.status === "completed").length;
-  const pendingPayment = myBookings.filter(
-    (b) => b.status === "completed" && b.paymentStatus === "unpaid"
+  const completedJobs = bookings.filter((b) => b.status === "completed").length;
+  const pendingPayment = bookings.filter(
+    (b) => b.status === "completed" && b.paymentStatus !== "paid"
   ).length;
 
-  const activityData = [
-    { label: "Jun", value: 1 },
-    { label: "Jul", value: 2 },
-    { label: "Aug", value: 1 },
-    { label: "Sep", value: 3 },
-    { label: "Oct", value: 2 },
-    { label: "Nov", value: 4, highlight: true },
-  ];
+  // Only computed once the data is in: Next 16 forbids reading the current
+  // time during prerender of a client component.
+  const activityData =
+    isLoading || loadState === "error" ? [] : buildMonthlyActivity(bookings);
 
   const statusDonutData = [
     { label: "Active Jobs", value: activeJobs, color: "#f59e0b" },
     { label: "Completed", value: completedJobs, color: "#10b981" },
-    { label: "Cancelled/Other", value: Math.max(totalRequests - activeJobs - completedJobs, 0), color: "#64748b" },
+    {
+      label: "Cancelled / Rejected",
+      value: Math.max(totalRequests - activeJobs - completedJobs, 0),
+      color: "#64748b",
+    },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <PageHeader
         heading="Customer Dashboard"
         description="Track your repair requests, manage technician visits, and settle completed jobs."
@@ -87,150 +128,254 @@ export default function CustomerDashboardPage() {
         </Link>
       </PageHeader>
 
-      {/* Pay Now Alert Banner if customer has unpaid completed jobs */}
-      {pendingPayment > 0 && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500 text-white shrink-0">
-              <CreditCard className="size-5" />
+      {isLoading ? (
+        <DashboardSkeleton />
+      ) : loadState === "error" ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Could not load your dashboard"
+          description="We could not reach the repair service server. Check your connection and try again."
+          actionLabel="Try Again"
+          onAction={handleRetry}
+        />
+      ) : (
+        <>
+          {pendingPayment > 0 && (
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-amber-500 text-white shrink-0">
+                  <CreditCard className="size-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-amber-900">
+                    You have {pendingPayment} completed job
+                    {pendingPayment === 1 ? "" : "s"} awaiting payment!
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    Your technician has finished the work. Please review and pay
+                    securely via Stripe.
+                  </p>
+                </div>
+              </div>
+              <Link href="/dashboard/customer/bookings">
+                <Button
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold shrink-0"
+                >
+                  Pay Now
+                </Button>
+              </Link>
             </div>
-            <div>
-              <p className="text-sm font-bold text-amber-900">
-                You have {pendingPayment} completed job awaiting payment!
-              </p>
-              <p className="text-xs text-amber-700">
-                Your technician has finished the work. Please review and pay securely via Stripe.
-              </p>
-            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <StatCard
+              title="Total Requests"
+              value={totalRequests}
+              subtitle="All-time repair requests"
+              icon={CalendarCheck}
+              iconClassName="bg-teal-50 text-teal-700"
+            />
+            <StatCard
+              title="Active Jobs"
+              value={activeJobs}
+              subtitle="In progress or awaiting technician"
+              icon={Clock}
+              iconClassName="bg-amber-50 text-amber-600"
+              trend={
+                activeJobs > 0
+                  ? { value: `${activeJobs} ongoing`, isPositive: true }
+                  : undefined
+              }
+            />
+            <StatCard
+              title="Completed Jobs"
+              value={completedJobs}
+              subtitle="Successfully delivered & verified"
+              icon={CheckCircle2}
+              iconClassName="bg-emerald-50 text-emerald-600"
+            />
           </div>
-          <Link href="/dashboard/customer/bookings">
-            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-semibold shrink-0">
-              Pay Now
-            </Button>
-          </Link>
-        </div>
+
+          {totalRequests === 0 ? (
+            <EmptyState
+              icon={Wrench}
+              title="No repair requests yet"
+              description="Browse verified technicians and send your first repair request. You only pay after the job is completed."
+              actionLabel="Browse Repair Services"
+              actionHref="/services"
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <MiniBarChart
+                    title="Monthly Repair Activity"
+                    subtitle="Your repair requests over the last six months"
+                    data={activityData}
+                  />
+                </div>
+                <div className="lg:col-span-1">
+                  <MiniDonutChart
+                    title="Job Status Breakdown"
+                    subtitle="Current status distribution"
+                    data={statusDonutData}
+                    centerValue={totalRequests}
+                    centerLabel="Total Jobs"
+                  />
+                </div>
+              </div>
+
+              <Card className="border border-slate-200/90 shadow-xs">
+                <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base font-bold text-slate-900">
+                      Recent Repair Bookings
+                    </CardTitle>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Your latest submitted requests and service tracking status
+                    </p>
+                  </div>
+                  <Link
+                    href="/dashboard/customer/bookings"
+                    className="text-xs font-semibold text-teal-700 hover:text-teal-800 flex items-center gap-1"
+                  >
+                    <span>View All</span>
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                </CardHeader>
+
+                <CardContent className="p-0">
+                  {/* Desktop table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-600">
+                      <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500 border-y border-slate-200/80">
+                        <tr>
+                          <th className="px-5 py-3">Service</th>
+                          <th className="px-5 py-3">Technician</th>
+                          <th className="px-5 py-3">Preferred Date</th>
+                          <th className="px-5 py-3">Amount</th>
+                          <th className="px-5 py-3">Status</th>
+                          <th className="px-5 py-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {bookings.slice(0, 4).map((booking) => (
+                          <tr
+                            key={booking._id}
+                            className="hover:bg-slate-50/70 transition-colors"
+                          >
+                            <td className="px-5 py-3.5 font-medium text-slate-900">
+                              <div className="font-semibold">
+                                {booking.serviceTitle}
+                              </div>
+                              <div className="text-xs text-slate-400">
+                                {booking.category}
+                              </div>
+                            </td>
+                            <td className="px-5 py-3.5 text-xs text-slate-600">
+                              {booking.technicianName}
+                            </td>
+                            <td className="px-5 py-3.5 text-xs text-slate-600">
+                              {formatDate(booking.preferredDate)}
+                            </td>
+                            <td className="px-5 py-3.5 text-xs font-bold text-slate-900">
+                              {formatCurrency(
+                                booking.finalAmount || booking.basePrice
+                              )}
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <StatusBadge status={booking.status} />
+                            </td>
+                            <td className="px-5 py-3.5 text-right">
+                              <RecentBookingAction booking={booking} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile cards */}
+                  <div className="md:hidden divide-y divide-slate-100">
+                    {bookings.slice(0, 4).map((booking) => (
+                      <div key={booking._id} className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-slate-900 text-sm">
+                              {booking.serviceTitle}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {booking.technicianName}
+                            </p>
+                          </div>
+                          <StatusBadge status={booking.status} />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span>{formatDate(booking.preferredDate)}</span>
+                          <span className="font-bold text-slate-900">
+                            {formatCurrency(
+                              booking.finalAmount || booking.basePrice
+                            )}
+                          </span>
+                        </div>
+                        <RecentBookingAction booking={booking} />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </>
       )}
+    </div>
+  );
+}
 
-      {/* Overview Stat Cards */}
+function RecentBookingAction({ booking }: { booking: Booking }) {
+  if (booking.status === "completed" && booking.paymentStatus !== "paid") {
+    return (
+      <Link href="/dashboard/customer/bookings">
+        <Button
+          size="sm"
+          className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-7 px-2.5 w-full md:w-auto"
+        >
+          Pay Now
+        </Button>
+      </Link>
+    );
+  }
+
+  return (
+    <Link href="/dashboard/customer/bookings">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-xs h-7 text-slate-600 w-full md:w-auto"
+      >
+        Details
+      </Button>
+    </Link>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6" role="status" aria-label="Loading dashboard">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard
-          title="Total Requests"
-          value={totalRequests}
-          subtitle="All-time repair requests"
-          icon={CalendarCheck}
-          iconClassName="bg-teal-50 text-teal-700"
-        />
-        <StatCard
-          title="Active Jobs"
-          value={activeJobs}
-          subtitle="In progress or awaiting technician"
-          icon={Clock}
-          iconClassName="bg-amber-50 text-amber-600"
-          trend={{ value: `${activeJobs} ongoing`, isPositive: true }}
-        />
-        <StatCard
-          title="Completed Jobs"
-          value={completedJobs}
-          subtitle="Successfully delivered & verified"
-          icon={CheckCircle2}
-          iconClassName="bg-emerald-50 text-emerald-600"
-        />
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-28 animate-pulse rounded-xl border border-slate-200 bg-white"
+          />
+        ))}
       </div>
-
-      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <MiniBarChart
-            title="Monthly Repair Activity"
-            subtitle="Number of device and appliance repair bookings over time"
-            data={activityData}
-          />
-        </div>
-        <div className="lg:col-span-1">
-          <MiniDonutChart
-            title="Job Status Breakdown"
-            subtitle="Current status distribution"
-            data={statusDonutData}
-            centerValue={totalRequests}
-            centerLabel="Total Jobs"
-          />
-        </div>
+        <div className="h-64 animate-pulse rounded-xl border border-slate-200 bg-white lg:col-span-2" />
+        <div className="h-64 animate-pulse rounded-xl border border-slate-200 bg-white" />
       </div>
-
-      {/* Recent Bookings Table Preview */}
-      <Card className="border border-slate-200/90 shadow-xs">
-        <CardHeader className="p-5 pb-3 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-base font-bold text-slate-900">
-              Recent Repair Bookings
-            </CardTitle>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Your latest submitted requests and service tracking status
-            </p>
-          </div>
-          <Link
-            href="/dashboard/customer/bookings"
-            className="text-xs font-semibold text-teal-700 hover:text-teal-800 flex items-center gap-1"
-          >
-            <span>View All</span>
-            <ArrowRight className="size-3.5" />
-          </Link>
-        </CardHeader>
-
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500 border-y border-slate-200/80">
-                <tr>
-                  <th className="px-5 py-3">Service</th>
-                  <th className="px-5 py-3">Technician</th>
-                  <th className="px-5 py-3">Preferred Date</th>
-                  <th className="px-5 py-3">Amount</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {myBookings.slice(0, 4).map((booking) => (
-                  <tr key={booking._id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-slate-900">
-                      <div className="font-semibold">{booking.serviceTitle}</div>
-                      <div className="text-xs text-slate-400">{booking.category}</div>
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600">
-                      {booking.technicianName}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-600">
-                      {formatDate(booking.preferredDate)}
-                    </td>
-                    <td className="px-5 py-3.5 text-xs font-bold text-slate-900">
-                      {formatCurrency(booking.finalAmount || booking.basePrice)}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <StatusBadge status={booking.status} />
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      {booking.status === "completed" && booking.paymentStatus === "unpaid" ? (
-                        <Link href="/dashboard/customer/bookings">
-                          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-7 px-2.5">
-                            Pay Now
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Link href="/dashboard/customer/bookings">
-                          <Button variant="ghost" size="sm" className="text-xs h-7 text-slate-600">
-                            Details
-                          </Button>
-                        </Link>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="h-72 animate-pulse rounded-xl border border-slate-200 bg-white" />
     </div>
   );
 }
