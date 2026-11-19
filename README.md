@@ -61,7 +61,6 @@ Frontend (`fixora/.env`):
 - `MONGODB_URL`
 - `BETTER_AUTH_SECRET`
 - `BETTER_AUTH_URL`
-- `JWT_SECRET`
 - `NEXT_PUBLIC_API_URL` (for example, `http://localhost:5000`)
 - `IMGBB_API_KEY` (server-side upload route)
 - `STRIPE_SECRET_KEY` (server-only)
@@ -70,7 +69,7 @@ Frontend (`fixora/.env`):
 API (`fixora-server/.env`):
 
 - `MONGODB_URL` or `MONGODB_URI`
-- `JWT_SECRET`
+- `BETTER_AUTH_URL` (the frontend origin; `AUTH_URL` is also accepted)
 - `CLIENT_URL` (for example, `http://localhost:3000`)
 - `PORT` (optional; defaults to `5000`)
 - `STRIPE_SECRET_KEY` (Stripe test-mode key)

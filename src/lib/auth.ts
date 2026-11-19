@@ -1,11 +1,16 @@
 import { betterAuth } from "better-auth";
+import { jwt } from "better-auth/plugins";
 import { MongoClient } from "mongodb";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
+
+const authBaseUrl = process.env.BETTER_AUTH_URL;
+const authOrigin = authBaseUrl ? new URL(authBaseUrl).origin : undefined;
 
 const client = new MongoClient(process.env.MONGODB_URL as string);
 const db = client.db("fixora");
 
 export const auth = betterAuth({
+  baseURL: authBaseUrl,
   user: {
     additionalFields: {
       role: {
@@ -31,6 +36,24 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  plugins: [
+    jwt({
+      jwks: {
+        keyPairConfig: {
+          alg: "EdDSA",
+          crv: "Ed25519",
+        },
+      },
+      jwt: {
+        issuer: authOrigin,
+        audience: authOrigin,
+        definePayload: ({ user }) => ({
+          id: user.id,
+          email: user.email,
+        }),
+      },
+    }),
+  ],
   databaseHooks: {
     user: {
       create: {

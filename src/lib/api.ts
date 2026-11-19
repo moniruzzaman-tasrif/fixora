@@ -35,8 +35,8 @@ function readMessage(data: unknown, status: number): string {
 }
 
 /**
- * Browser caller for the Express API. `credentials: "include"` sends the
- * BetterAuth session cookie so the server can authorize every request.
+ * Gets a BetterAuth JWT from its `/api/auth/token` endpoint, then sends it to
+ * the Express API as a bearer token.
  */
 export async function apiRequest<T>(
   path: string,
