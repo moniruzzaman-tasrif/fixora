@@ -18,17 +18,19 @@ export function getMyBookings(): Promise<Booking[]> {
 export function createBooking(
   input: CreateBookingInput
 ): Promise<Booking> {
-  return apiRequest("/booking", {
+  return apiRequest<{ booking: Booking }>("/booking", {
     method: "POST",
     body: JSON.stringify(input),
-  });
+  }).then(({ booking }) => booking);
 }
 
 /** Cancels a `requested` booking owned by the signed-in customer. */
 export function cancelBooking(
   bookingId: string
 ): Promise<Booking> {
-  return apiRequest(`/booking/${bookingId}/cancel`, { method: "PATCH" });
+  return apiRequest<{ booking: Booking }>(`/booking/${bookingId}/cancel`, {
+    method: "PATCH",
+  }).then(({ booking }) => booking);
 }
 
 /** Starts a Stripe Checkout Session and returns its hosted URL. */

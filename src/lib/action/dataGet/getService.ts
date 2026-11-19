@@ -1,6 +1,5 @@
 import { Service } from "@/types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { getApiUrl } from "@/lib/api";
 
 /**
  * Reads services from the Express API.
@@ -10,8 +9,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 const getService = async (query = ""): Promise<Service[]> => {
   const cleanQuery = query.replace(/^\?/, "").trim();
   const url = cleanQuery
-    ? `${API_URL}/services?${cleanQuery}`
-    : `${API_URL}/services`;
+    ? `${getApiUrl()}/services?${cleanQuery}`
+    : `${getApiUrl()}/services`;
 
   const res = await fetch(url, { cache: "no-store" });
 

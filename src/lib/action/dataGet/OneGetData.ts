@@ -1,9 +1,8 @@
 import { Service } from "@/types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { getApiUrl } from "@/lib/api";
 
 export async function OneGetData(id: string): Promise<Service | null> {
-  const res = await fetch(`${API_URL}/services/${id}`, {
+  const res = await fetch(`${getApiUrl()}/services/${id}`, {
     cache: "no-store",
   });
 

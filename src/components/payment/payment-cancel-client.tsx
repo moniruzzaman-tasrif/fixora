@@ -41,7 +41,7 @@ export function PaymentCancelClient() {
             </Link>
             <Link href="/dashboard/customer/bookings" className="flex-1">
               <Button className="w-full bg-teal-700 hover:bg-teal-800 text-white font-semibold gap-2">
-                Back to bookings
+                Try Again
                 <ArrowRight className="size-4" />
               </Button>
             </Link>

@@ -92,11 +92,19 @@ export function ServiceBookingCard({ service }: ServiceBookingCardProps) {
       setBookingSubmitted(true);
       toast.success("Repair request sent successfully.");
     } catch (error) {
-      toast.error(
-        error instanceof ApiError
-          ? error.message
-          : "Failed to send booking request. Please try again."
-      );
+      if (
+        error instanceof ApiError &&
+        error.status === 409 &&
+        error.message.toLowerCase().includes("active request")
+      ) {
+        toast.error("You already have an active request for this service");
+      } else {
+        toast.error(
+          error instanceof ApiError
+            ? error.message
+            : "Failed to send booking request. Please try again."
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -30,10 +30,10 @@ export function getMyServices(): Promise<Service[]> {
 export function createService(
   input: ServiceInput
 ): Promise<Service> {
-  return apiRequest("/services", {
+  return apiRequest<{ service: Service }>("/services", {
     method: "POST",
     body: JSON.stringify(input),
-  });
+  }).then(({ service }) => service);
 }
 
 /** Edits an owned service; the server resets approval to `pending`. */
@@ -41,10 +41,10 @@ export function updateService(
   serviceId: string,
   input: ServiceInput
 ): Promise<Service> {
-  return apiRequest(`/services/${serviceId}`, {
+  return apiRequest<{ service: Service }>(`/services/${serviceId}`, {
     method: "PATCH",
     body: JSON.stringify(input),
-  });
+  }).then(({ service }) => service);
 }
 
 /** Deletes an owned service. */
@@ -59,10 +59,10 @@ export function setServiceAvailability(
   serviceId: string,
   isAvailable: boolean
 ): Promise<Service> {
-  return apiRequest(`/services/${serviceId}/availability`, {
+  return apiRequest<{ service: Service }>(`/services/${serviceId}/availability`, {
     method: "PATCH",
     body: JSON.stringify({ isAvailable }),
-  });
+  }).then(({ service }) => service);
 }
 
 /** Bookings assigned to the signed-in technician's email. */
@@ -76,10 +76,10 @@ export function updateBookingStatus(
   status: BookingStatus,
   finalAmount?: number
 ): Promise<Booking> {
-  return apiRequest(`/booking/${bookingId}/status`, {
+  return apiRequest<{ booking: Booking }>(`/booking/${bookingId}/status`, {
     method: "PATCH",
     body: JSON.stringify(
       finalAmount === undefined ? { status } : { status, finalAmount }
     ),
-  });
+  }).then(({ booking }) => booking);
 }

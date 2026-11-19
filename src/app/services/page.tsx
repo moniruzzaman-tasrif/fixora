@@ -77,17 +77,7 @@ function ServicesContent() {
         const data = await getService(queryString);
         if (cancelled) return;
 
-        if (Array.isArray(data)) {
-          setServices(
-            data.filter(
-              (service) =>
-                service.approvalStatus === "approved" &&
-                service.isAvailable === true
-            )
-          );
-        } else {
-          setServices([]);
-        }
+        setServices(Array.isArray(data) ? data : []);
       } catch (err) {
         if (cancelled) return;
         setServices([]);

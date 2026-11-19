@@ -63,6 +63,9 @@ export function PaymentSuccessClient() {
         status: "error",
         message: "This payment link is missing its Stripe session reference.",
       };
+  const paymentCallbackUrl = sessionId
+    ? `/payment/success?session_id=${encodeURIComponent(sessionId)}`
+    : "/dashboard/customer/bookings";
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -158,7 +161,7 @@ export function PaymentSuccessClient() {
                 <Link
                   href={
                     state.needsSignIn
-                      ? "/sign-in?callbackUrl=%2Fdashboard%2Fcustomer%2Fbookings"
+                      ? `/sign-in?callbackUrl=${encodeURIComponent(paymentCallbackUrl)}`
                       : "/dashboard/customer/bookings"
                   }
                   className="flex-1"
