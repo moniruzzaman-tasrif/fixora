@@ -196,10 +196,28 @@ Steps 8, 17 and 19 are therefore **partially** real for the customer role:
   empty, so checkout/verify return an honest `503`. Webhook signature logic is
   implemented but has not been exercised against a real Stripe event.
 - [ ] **Service approval gate** — booking currently enforces `isAvailable` only, not
-  `approvalStatus === "approved"`, because no admin approval workflow is wired yet.
-- [ ] **Technician / admin dashboards** — still on dummy data; their APIs
-  (`PATCH /booking/:id/status`, `PATCH /admin/services/:id/approval`) exist and are
-  tested, but the pages are not connected.
+  `approvalStatus === "approved"`, was still listed in the earlier audit.
+- [x] **Service approval gate** — public listing and service detail endpoints now
+  require `approvalStatus === "approved"` and `isAvailable === true`; booking creation
+  also enforces both values.
+- [x] **Technician / admin dashboards** — pages are connected to the Express API for
+  services, bookings, users, approvals, and payments.
+
+### Implementation audit — 19 November 2026
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Public pages | PASS | Home, `/services`, `/services/[id]`, `/about`, payment pages, loading and not-found states |
+| Customer dashboard | PASS | Real Express API seams, own bookings, cancellation, own payments |
+| Technician dashboard | PASS | Real service CRUD/availability seams and technician request workflow |
+| Admin dashboard | PASS | Real users, moderation, bookings, and transaction API seams |
+| Update profile | PASS | ImgBB upload and protected profile update implementation |
+| Authentication | PARTIAL | BetterAuth UI/session is implemented; external OAuth credentials and Express/BetterAuth env setup remain manual |
+| Authorization | PASS | JWT bridge, role middleware, ownership checks, and role/self-role protections |
+| ImgBB | PARTIAL | Frontend and server upload implementations exist; live upload requires `IMGBB_API_KEY` |
+| Stripe | BLOCKED | Checkout, verification, and webhook code exist; live credentials and a configured webhook secret are required |
+| Database | PARTIAL | Express/MongoDB models and relationships exist; live Atlas/local MongoDB connection and seed setup remain manual |
+| Responsive UI | PASS | Existing responsive tables/cards and mobile dashboard layout; visual browser testing not yet recorded |
 
 ---
 

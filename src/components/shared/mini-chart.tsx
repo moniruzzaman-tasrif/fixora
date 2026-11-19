@@ -115,22 +115,23 @@ export function MiniDonutChart({
   const total = data.reduce((acc, curr) => acc + curr.value, 0) || 1;
 
   // Calculate SVG stroke dashes for SVG circle donut
-  let cumulativePercent = 0;
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
-
-  const slices = data.map((item) => {
+  const slices = data.reduce<Array<DonutItem & { strokeDasharray: string; strokeDashoffset: number }>>((acc, item) => {
+    const cumulativePercent = acc.reduce((sum, slice) => {
+      const slicePercent = (slice.value / total) * 100;
+      return sum + slicePercent;
+    }, 0);
     const percent = (item.value / total) * 100;
     const strokeDasharray = `${(percent / 100) * circumference} ${circumference}`;
     const strokeDashoffset = -((cumulativePercent / 100) * circumference);
-    cumulativePercent += percent;
-
-    return {
+    acc.push({
       ...item,
       strokeDasharray,
       strokeDashoffset,
-    };
-  });
+    });
+    return acc;
+  }, []);
 
   return (
     <Card className={cn("border border-slate-200/90 shadow-xs", className)}>

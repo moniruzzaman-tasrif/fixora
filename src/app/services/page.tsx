@@ -8,13 +8,11 @@ import { ServiceCard } from "@/components/services/service-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Service, ServiceCategory, ServiceMode } from "@/types";
+import { Service } from "@/types";
 import { SERVICE_CATEGORIES } from "@/lib/constants";
 import getService from "@/lib/action/dataGet/getService";
 import {
   Search,
-  SlidersHorizontal,
   Wrench,
   X,
   Sparkles,
@@ -39,14 +37,6 @@ function ServicesContent() {
   const [selectedCategory, setSelectedCategory] = React.useState(initialCategory);
   const [selectedMode, setSelectedMode] = React.useState(initialMode);
   const [selectedSort, setSelectedSort] = React.useState(initialSort);
-
-  // Sync state if URL changes externally
-  React.useEffect(() => {
-    setSelectedCategory(searchParams.get("category") || "all");
-    setSearchQuery(searchParams.get("search") || "");
-    setSelectedMode(searchParams.get("mode") || "all");
-    setSelectedSort(searchParams.get("sort") || "featured");
-  }, [searchParams]);
 
   const [services, setServices] = React.useState<Service[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);

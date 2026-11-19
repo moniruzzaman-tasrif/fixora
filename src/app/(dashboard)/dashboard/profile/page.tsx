@@ -12,6 +12,8 @@ import { formatDate } from "@/lib/format";
 import { useCurrentUser } from "@/lib/session";
 import { UserRole } from "@/types";
 import { toast } from "sonner";
+import { uploadImage } from "@/lib/upload";
+import { updateProfile } from "@/lib/action/api/adminApi";
 import {
   User as UserIcon,
   Mail,
@@ -34,7 +36,7 @@ type ProfileDraft = {
 
 export default function ProfilePage() {
   // The signed-in user (and role) comes from the BetterAuth session.
-  const { user, isPending } = useCurrentUser();
+  const { user, isPending, refetch } = useCurrentUser();
 
   // `draft` only holds what the user typed; untouched fields fall back to the
   // session values, so the form follows the session once it loads.
@@ -100,14 +102,31 @@ export default function ProfilePage() {
     setIsSaving(true);
 
     try {
-      // -----------------------------------------------------------------------
-      // TODO(owner): upload `imageFile` with `uploadImage()` and PATCH the
-      // result together with the form values to /api/users/profile:
-      // { name, phone, area, bio, image }
-      // Nothing is stored until that endpoint exists — no fake success here.
-      // -----------------------------------------------------------------------
-      toast.info(
-        "Profile updates need PATCH /api/users/profile on the backend, so nothing was saved yet."
+      let imageUrl = user.image;
+      if (imageFile) imageUrl = await uploadImage(imageFile);
+
+      await updateProfile({
+        name: values.name.trim(),
+        phone: values.phone.trim(),
+        area: values.area.trim(),
+        bio: values.bio.trim(),
+        ...(imageUrl ? { image: imageUrl } : {}),
+      });
+
+      await refetch();
+      setDraft(null);
+      setImageFile(null);
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+      setImagePreview(null);
+      toast.success("Profile updated successfully.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not update your profile."
       );
     } finally {
       setIsSaving(false);

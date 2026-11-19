@@ -21,7 +21,6 @@ import {
   Clock,
   Wrench,
   AlertCircle,
-  AlertCircle,
   Eye,
   Filter,
 } from "lucide-react";

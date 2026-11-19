@@ -4,7 +4,6 @@ import * as React from "react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -286,6 +285,8 @@ export default function AdminTransactionsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </>
+    )}
+  </div>
   );
 }

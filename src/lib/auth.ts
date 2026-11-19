@@ -7,6 +7,7 @@ const db = client.db("fixora");
 
 export const auth = betterAuth({
   user: {
+    modelName: "users",
     additionalFields: {
       role: {
         type: "string",

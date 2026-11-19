@@ -32,12 +32,30 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
+  let authorizationHeader: Record<string, string> = {};
+
+  try {
+    const identityResponse = await fetch("/api/auth/token", {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (identityResponse.ok) {
+      const identity = (await identityResponse.json()) as { token?: unknown };
+      if (typeof identity.token === "string") {
+        authorizationHeader = { Authorization: `Bearer ${identity.token}` };
+      }
+    }
+  } catch {
+    // The backend will return 401 if the session is no longer usable.
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     credentials: "include",
     cache: "no-store",
     headers: {
       ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...authorizationHeader,
       ...(init.headers ?? {}),
     },
   });

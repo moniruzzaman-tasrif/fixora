@@ -1,0 +1,14 @@
+import "dotenv/config";
+import { connectDB } from "./config/db.js";
+import { User, Service, Booking, Payment } from "./models/index.js";
+import bcrypt from "bcryptjs";
+await connectDB(process.env.MONGODB_URI);
+await User.deleteMany({});
+await Service.deleteMany({});
+await Booking.deleteMany({});
+await Payment.deleteMany({});
+await User.create({ name: "Admin", email: "admin@fixora.com", password: await bcrypt.hash("admin123",10), role: "admin" });
+const tech = await User.create({ name: "Tech One", email: "tech@fixora.com", password: await bcrypt.hash("tech123",10), role: "technician" });
+await Service.create({ title: "Phone Screen Repair", category: "Smartphone", description: "Fix cracked screen", image: "", basePrice: 50, estimatedDuration: "1-2 hours", serviceMode: "Shop Drop-off", serviceArea: "Dhaka", technicianName: tech.name, technicianEmail: tech.email, approvalStatus: "approved", isAvailable: true });
+console.log("Seeded");
+process.exit(0);
