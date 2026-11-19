@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Service, ApprovalStatus } from "@/types";
-import getService from "@/lib/action/dataGet/getService";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { ApiError } from "@/lib/api";
+import { getAdminServices, setServiceApproval } from "@/lib/action/api/adminApi";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -20,78 +21,114 @@ import {
   Clock,
   Wrench,
   AlertCircle,
+  AlertCircle,
   Eye,
   Filter,
 } from "lucide-react";
 
 export default function AdminServicesPage() {
   const [services, setServices] = React.useState<Service[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
+    "loading"
+  );
+  const [loadError, setLoadError] = React.useState("");
+  const [reloadKey, setReloadKey] = React.useState(0);
+  // Pending listings are the moderation queue, so they open first.
+  const [statusFilter, setStatusFilter] = React.useState<string>("pending");
   const [categoryFilter, setCategoryFilter] = React.useState<string>("all");
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [busyServiceId, setBusyServiceId] = React.useState<string | null>(null);
 
-  // Load real services from database
   React.useEffect(() => {
     let cancelled = false;
-    getService()
-      .then((data) => {
-        if (!cancelled && Array.isArray(data)) {
-          setServices(data);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch admin services from database:", err);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
 
+    async function load() {
+      setLoadState("loading");
+      try {
+        const data = await getAdminServices();
+        if (cancelled) return;
+        setServices(Array.isArray(data) ? data : []);
+        setLoadState("ready");
+      } catch (err: unknown) {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof ApiError
+            ? err.message
+            : "Could not load services. Please try again."
+        );
+        setLoadState("error");
+      }
+    }
+
+    void load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   // Details preview modal
   const [selectedService, setSelectedService] = React.useState<Service | null>(null);
 
-  // Filtered services
+  // Filtered services (pending always sorted first in the "All" view)
   const filteredServices = React.useMemo(() => {
-    return services.filter((service) => {
-      const matchesSearch =
-        service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.technicianName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.technicianEmail.toLowerCase().includes(searchQuery.toLowerCase());
+    const order: Record<ApprovalStatus, number> = {
+      pending: 0,
+      approved: 1,
+      rejected: 2,
+    };
+    return services
+      .filter((service) => {
+        const matchesSearch =
+          service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          service.technicianName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          service.technicianEmail.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" || service.approvalStatus === statusFilter;
+        const matchesStatus =
+          statusFilter === "all" || service.approvalStatus === statusFilter;
 
-      const matchesCategory =
-        categoryFilter === "all" || service.category === categoryFilter;
+        const matchesCategory =
+          categoryFilter === "all" || service.category === categoryFilter;
 
-      return matchesSearch && matchesStatus && matchesCategory;
-    });
+        return matchesSearch && matchesStatus && matchesCategory;
+      })
+      .sort(
+        (a, b) =>
+          order[a.approvalStatus] - order[b.approvalStatus] ||
+          String(b.createdAt).localeCompare(String(a.createdAt))
+      );
   }, [services, searchQuery, statusFilter, categoryFilter]);
 
-  // Status update handler
-  const handleUpdateStatus = (
+  // Approval update against the protected admin API
+  const handleUpdateStatus = async (
     serviceId: string,
     newStatus: ApprovalStatus,
     title: string
   ) => {
-    // TODO(owner): replace with API call: PATCH /api/admin/services/:id/approval { approvalStatus: newStatus }
-    setServices((prev) =>
-      prev.map((s) => (s._id === serviceId ? { ...s, approvalStatus: newStatus } : s))
-    );
+    setBusyServiceId(serviceId);
+    try {
+      const { service: updated } = await setServiceApproval(serviceId, newStatus);
+      setServices((prev) =>
+        prev.map((row) => (row._id === updated._id ? { ...row, ...updated } : row))
+      );
+      if (selectedService && selectedService._id === serviceId) {
+        setSelectedService((prev) => (prev ? { ...prev, ...updated } : null));
+      }
 
-    if (newStatus === "approved") {
-      toast.success(`Service "${title}" approved! It is now visible to customers.`);
-    } else if (newStatus === "rejected") {
-      toast.error(`Service "${title}" rejected.`);
-    }
-
-    if (selectedService && selectedService._id === serviceId) {
-      setSelectedService((prev) => (prev ? { ...prev, approvalStatus: newStatus } : null));
+      if (newStatus === "approved") {
+        toast.success(`Service "${title}" approved. It is now visible to customers.`);
+      } else if (newStatus === "rejected") {
+        toast.error(`Service "${title}" rejected.`);
+      } else {
+        toast.success(`Service "${title}" moved back to pending review.`);
+      }
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Could not update the service."
+      );
+    } finally {
+      setBusyServiceId(null);
     }
   };
 
@@ -221,7 +258,28 @@ export default function AdminServicesPage() {
       {/* Services Table */}
       <Card className="border-slate-200 shadow-xs bg-white overflow-hidden">
         <CardContent className="p-0">
-          {filteredServices.length === 0 ? (
+          {loadState === "loading" ? (
+            <div className="divide-y divide-slate-100" role="status" aria-label="Loading services">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-4 px-6 py-4 animate-pulse">
+                  <div className="size-12 rounded-lg bg-slate-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-1/3 rounded bg-slate-200" />
+                    <div className="h-3 w-1/2 rounded bg-slate-100" />
+                  </div>
+                  <div className="h-6 w-20 rounded-full bg-slate-100" />
+                </div>
+              ))}
+            </div>
+          ) : loadState === "error" ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Could not load services"
+              description={loadError}
+              actionLabel="Try Again"
+              onAction={() => setReloadKey((key) => key + 1)}
+            />
+          ) : filteredServices.length === 0 ? (
             <EmptyState
               icon={Wrench}
               title="No services match your filter"
@@ -323,6 +381,7 @@ export default function AdminServicesPage() {
                               <Button
                                 size="sm"
                                 onClick={() => handleUpdateStatus(service._id, "approved", service.title)}
+                                disabled={busyServiceId === service._id}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 text-xs font-semibold gap-1"
                               >
                                 <Check className="size-3.5" />
@@ -332,6 +391,7 @@ export default function AdminServicesPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleUpdateStatus(service._id, "rejected", service.title)}
+                                disabled={busyServiceId === service._id}
                                 className="border-rose-200 text-rose-700 hover:bg-rose-50 h-8 text-xs font-semibold gap-1"
                               >
                                 <X className="size-3.5" />
@@ -345,6 +405,7 @@ export default function AdminServicesPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleUpdateStatus(service._id, "rejected", service.title)}
+                              disabled={busyServiceId === service._id}
                               className="border-slate-200 text-rose-700 hover:bg-rose-50 h-8 text-xs font-medium"
                             >
                               Revoke
@@ -356,6 +417,7 @@ export default function AdminServicesPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => handleUpdateStatus(service._id, "approved", service.title)}
+                              disabled={busyServiceId === service._id}
                               className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 h-8 text-xs font-medium"
                             >
                               Re-approve
@@ -447,6 +509,7 @@ export default function AdminServicesPage() {
                   onClick={() => {
                     handleUpdateStatus(selectedService._id, "approved", selectedService.title);
                   }}
+                  disabled={busyServiceId === selectedService._id}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs gap-1"
                 >
                   <Check className="size-3.5" />
@@ -460,6 +523,7 @@ export default function AdminServicesPage() {
                   onClick={() => {
                     handleUpdateStatus(selectedService._id, "rejected", selectedService.title);
                   }}
+                  disabled={busyServiceId === selectedService._id}
                   className="border-rose-200 text-rose-700 hover:bg-rose-50 font-semibold text-xs gap-1"
                 >
                   <X className="size-3.5" />

@@ -52,11 +52,13 @@ export function toAppUser(sessionUser: SessionUserShape): User {
  * `user` stays `null` until the session request resolves.
  */
 export function useCurrentUser() {
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending, refetch } = useSession();
   const sessionUser = session?.user;
 
   return {
     user: sessionUser ? toAppUser(sessionUser) : null,
     isPending,
+    /** Re-reads the session from the database (used after a profile save). */
+    refetch,
   };
 }

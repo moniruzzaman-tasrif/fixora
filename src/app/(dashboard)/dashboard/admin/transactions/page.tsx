@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { DUMMY_PAYMENTS } from "@/data/payments";
 import { Payment } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { ApiError } from "@/lib/api";
+import { getAdminPayments } from "@/lib/action/api/adminApi";
 import { toast } from "sonner";
 import {
   Receipt,
@@ -23,15 +24,52 @@ import {
   X,
   DollarSign,
   ShieldCheck,
+  AlertCircle,
 } from "lucide-react";
 
 export default function AdminTransactionsPage() {
-  const [payments] = React.useState<Payment[]>(DUMMY_PAYMENTS);
+  const [payments, setPayments] = React.useState<Payment[]>([]);
+  const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
+    "loading"
+  );
+  const [loadError, setLoadError] = React.useState("");
+  const [reloadKey, setReloadKey] = React.useState(0);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
-  // Compute platform metrics
-  const totalVolume = payments.reduce((sum, p) => sum + p.amount, 0);
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoadState("loading");
+      try {
+        const data = await getAdminPayments();
+        if (cancelled) return;
+        setPayments(
+          (Array.isArray(data) ? data : []).filter(
+            (payment) => payment.paymentStatus === "paid"
+          )
+        );
+        setLoadState("ready");
+      } catch (err: unknown) {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof ApiError
+            ? err.message
+            : "Could not load transactions. Please try again."
+        );
+        setLoadState("error");
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  // Platform metrics — settled revenue only
+  const totalVolume = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const totalCount = payments.length;
   const averageTicket = totalCount > 0 ? Math.round(totalVolume / totalCount) : 0;
 
@@ -71,6 +109,28 @@ export default function AdminTransactionsPage() {
         </div>
       </PageHeader>
 
+      {loadState === "loading" ? (
+        <div className="space-y-4" role="status" aria-label="Loading transactions">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[0, 1, 2].map((key) => (
+              <div
+                key={key}
+                className="h-32 animate-pulse rounded-xl border border-slate-200 bg-white"
+              />
+            ))}
+          </div>
+          <div className="h-64 animate-pulse rounded-xl border border-slate-200 bg-white" />
+        </div>
+      ) : loadState === "error" ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Could not load transactions"
+          description={loadError}
+          actionLabel="Try Again"
+          onAction={() => setReloadKey((key) => key + 1)}
+        />
+      ) : (
+        <>
       {/* Financial Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard

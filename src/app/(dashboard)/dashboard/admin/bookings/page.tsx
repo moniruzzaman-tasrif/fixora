@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Booking, BookingStatus } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
-import getBooking from "@/lib/action/dataGet/getBooking";
+import { ApiError } from "@/lib/api";
+import { getAdminBookings } from "@/lib/action/api/adminApi";
 import { cn } from "@/lib/utils";
 import {
   CalendarCheck,
@@ -28,23 +29,38 @@ import {
 
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = React.useState<Booking[]>([]);
+  const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
+    "loading"
+  );
+  const [loadError, setLoadError] = React.useState("");
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
-    getBooking()
-      .then((data) => {
-        if (!cancelled && Array.isArray(data)) {
-          setBookings(data);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to load admin bookings from database:", err);
-      });
 
+    async function load() {
+      setLoadState("loading");
+      try {
+        const data = await getAdminBookings();
+        if (cancelled) return;
+        setBookings(Array.isArray(data) ? data : []);
+        setLoadState("ready");
+      } catch (err: unknown) {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof ApiError
+            ? err.message
+            : "Could not load bookings. Please try again."
+        );
+        setLoadState("error");
+      }
+    }
+
+    void load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -151,7 +167,28 @@ export default function AdminBookingsPage() {
       {/* Bookings Table */}
       <Card className="border-slate-200 shadow-xs bg-white overflow-hidden">
         <CardContent className="p-0">
-          {filteredBookings.length === 0 ? (
+          {loadState === "loading" ? (
+            <div className="divide-y divide-slate-100" role="status" aria-label="Loading bookings">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-4 px-6 py-4 animate-pulse">
+                  <div className="size-10 rounded-lg bg-slate-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-1/3 rounded bg-slate-200" />
+                    <div className="h-3 w-1/4 rounded bg-slate-100" />
+                  </div>
+                  <div className="h-6 w-20 rounded-full bg-slate-100" />
+                </div>
+              ))}
+            </div>
+          ) : loadState === "error" ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Could not load bookings"
+              description={loadError}
+              actionLabel="Try Again"
+              onAction={() => setReloadKey((key) => key + 1)}
+            />
+          ) : filteredBookings.length === 0 ? (
             <EmptyState
               icon={CalendarCheck}
               title="No bookings found"
@@ -233,6 +270,9 @@ export default function AdminBookingsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-xs">
                         <p className="font-bold text-slate-900">
                           {formatCurrency(b.finalAmount || b.basePrice)}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          Base: {formatCurrency(b.basePrice)}
                         </p>
                         {b.paymentStatus === "paid" ? (
                           <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 text-[11px]">

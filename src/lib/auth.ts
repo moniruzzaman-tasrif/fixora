@@ -31,6 +31,28 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  databaseHooks: {
+    user: {
+      create: {
+        // Public sign-up may only ever create customers or technicians.
+        before: async (user) => ({
+          data: {
+            ...user,
+            role: user.role === "technician" ? "technician" : "customer",
+          },
+        }),
+      },
+      update: {
+        // Role changes go through the protected admin API, never a self-update.
+        before: async (user) => {
+          if (user.role !== undefined) {
+            const { role: _ignored, ...rest } = user;
+            return { data: rest };
+          }
+        },
+      },
+    },
+  },
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_CLIENT_ID as string,

@@ -14,7 +14,7 @@ import { uploadImage } from "@/lib/upload";
 import { useCurrentUser } from "@/lib/session";
 import { ServiceCategory, ServiceMode } from "@/types";
 import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
-import servicePost from "@/lib/action/api/servicePost";
+import { createService } from "@/lib/action/api/technicianApi";
 
 export default function AddServicePage() {
   const router = useRouter();
@@ -31,7 +31,6 @@ export default function AddServicePage() {
   const [estimatedDuration, setEstimatedDuration] = React.useState("");
   const [serviceMode, setServiceMode] = React.useState<ServiceMode>("Home Visit");
   const [serviceArea, setServiceArea] = React.useState("");
-  const [isAvailable, setIsAvailable] = React.useState(true);
   const [imageFile, setImageFile] = React.useState<File | null>(null);
 
   const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -95,15 +94,14 @@ export default function AddServicePage() {
         estimatedDuration: estimatedDuration.trim(),
         serviceMode,
         serviceArea: serviceArea.trim(),
-        technicianName: user.name,
-        technicianEmail: user.email,
-        isAvailable,
       };
 
-      const savedService = await servicePost(payload);
+      // The server takes the technician identity from the session and forces
+      // approvalStatus: "pending" / isAvailable: true.
+      await createService(payload);
 
       toast.success(
-        `"${savedService.title}" submitted successfully! It is now pending admin approval before appearing publicly.`
+        "Your service has been submitted and is waiting for admin approval."
       );
 
       router.push("/dashboard/technician/my-services");
@@ -330,25 +328,7 @@ export default function AddServicePage() {
               />
             </div>
 
-            {/* Availability */}
-            <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3.5">
-              <input
-                id="isAvailable"
-                type="checkbox"
-                checked={isAvailable}
-                onChange={(e) => setIsAvailable(e.target.checked)}
-                disabled={isSubmitting}
-                className="mt-0.5 size-4 accent-teal-700"
-              />
-              <div className="space-y-0.5">
-                <Label htmlFor="isAvailable">Accept booking requests</Label>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Turn this off to keep the listing hidden from customers
-                  without deleting it. You can change it later from My Services.
-                </p>
-              </div>
-            </div>
-
+            {/* Availability is managed from My Services after approval */}
             {/* Moderation Notice */}
             <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-100 flex items-start gap-2.5 text-xs text-teal-900">
               <CheckCircle2 className="size-4 text-teal-700 shrink-0 mt-0.5" />

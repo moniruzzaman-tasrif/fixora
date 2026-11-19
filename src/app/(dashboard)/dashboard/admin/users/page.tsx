@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { DUMMY_USERS } from "@/data/users";
 import { User, UserRole } from "@/types";
 import { formatDate } from "@/lib/format";
 import { useCurrentUser } from "@/lib/session";
 import { cn } from "@/lib/utils";
+import { ApiError } from "@/lib/api";
+import { getAdminUsers, updateUserRole } from "@/lib/action/api/adminApi";
 import { toast } from "sonner";
 import {
   Users,
@@ -23,6 +24,7 @@ import {
   X,
   Check,
   AlertTriangle,
+  AlertCircle,
 } from "lucide-react";
 
 export default function AdminUsersPage() {
@@ -31,23 +33,55 @@ export default function AdminUsersPage() {
   const isOwnAccount = (target: User) =>
     Boolean(currentUser && target.email === currentUser.email);
 
-  // Local state initialized with dummy users
-  const [users, setUsers] = React.useState<User[]>(DUMMY_USERS);
+  // Local state loaded from the protected admin API.
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
+    "loading"
+  );
+  const [loadError, setLoadError] = React.useState("");
+  const [reloadKey, setReloadKey] = React.useState(0);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedRoleFilter, setSelectedRoleFilter] = React.useState<string>("all");
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoadState("loading");
+      try {
+        const rows = await getAdminUsers();
+        if (cancelled) return;
+        setUsers(Array.isArray(rows) ? rows : []);
+        setLoadState("ready");
+      } catch (err: unknown) {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof ApiError
+            ? err.message
+            : "Could not load users. Please try again."
+        );
+        setLoadState("error");
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
 
   // Modal state for changing role
   const [editingUser, setEditingUser] = React.useState<User | null>(null);
   const [newRole, setNewRole] = React.useState<UserRole>("customer");
   const [isUpdating, setIsUpdating] = React.useState(false);
 
-  // Filter users based on query and role tab
   const filteredUsers = React.useMemo(() => {
     return users.filter((user) => {
+      const query = searchQuery.toLowerCase();
       const matchesSearch =
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (user.phone && user.phone.includes(searchQuery));
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        (user.phone ? user.phone.includes(searchQuery) : false);
 
       const matchesRole =
         selectedRoleFilter === "all" || user.role === selectedRoleFilter;
@@ -56,33 +90,38 @@ export default function AdminUsersPage() {
     });
   }, [users, searchQuery, selectedRoleFilter]);
 
-  // Open edit modal
   const handleOpenEdit = (user: User) => {
-    // Current admin cannot change their own role to prevent lockout
+    // The current admin cannot change their own role (server also refuses).
     if (isOwnAccount(user)) {
-      toast.error("Security Rule: You cannot change your own admin account role.");
+      toast.error("You cannot change your own admin account role.");
       return;
     }
     setEditingUser(user);
     setNewRole(user.role);
   };
 
-  // Confirm role change
-  const handleSaveRole = () => {
+  const handleSaveRole = async () => {
     if (!editingUser) return;
     setIsUpdating(true);
 
-    setTimeout(() => {
-      // TODO(owner): replace with API call: PATCH /api/admin/users/:id/role { role: newRole }
+    try {
+      const { user: updated } = await updateUserRole(editingUser._id, newRole);
       setUsers((prev) =>
-        prev.map((u) => (u._id === editingUser._id ? { ...u, role: newRole } : u))
+        prev.map((row) => (row._id === updated._id ? { ...row, ...updated } : row))
       );
       toast.success(
-        `Role for "${editingUser.name}" successfully updated to ${newRole.toUpperCase()}`
+        `Role for "${updated.name}" updated to ${newRole.toUpperCase()}.`
       );
-      setIsUpdating(false);
       setEditingUser(null);
-    }, 400);
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Could not update the role."
+      );
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const getRoleBadge = (role: UserRole) => {
@@ -191,7 +230,28 @@ export default function AdminUsersPage() {
       {/* Users Table / List */}
       <Card className="border-slate-200 shadow-xs bg-white overflow-hidden">
         <CardContent className="p-0">
-          {filteredUsers.length === 0 ? (
+          {loadState === "loading" ? (
+            <div className="divide-y divide-slate-100" role="status" aria-label="Loading users">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center gap-4 px-6 py-4 animate-pulse">
+                  <div className="size-10 rounded-full bg-slate-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-1/4 rounded bg-slate-200" />
+                    <div className="h-3 w-1/3 rounded bg-slate-100" />
+                  </div>
+                  <div className="h-6 w-20 rounded-full bg-slate-100" />
+                </div>
+              ))}
+            </div>
+          ) : loadState === "error" ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Could not load users"
+              description={loadError}
+              actionLabel="Try Again"
+              onAction={() => setReloadKey((key) => key + 1)}
+            />
+          ) : filteredUsers.length === 0 ? (
             <EmptyState
               icon={Users}
               title="No users found"
@@ -260,7 +320,7 @@ export default function AdminUsersPage() {
 
                       {/* Joined Date */}
                       <td className="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">
-                        {user.createdAt ? formatDate(user.createdAt) : "Nov 2026"}
+                        {user.createdAt ? formatDate(user.createdAt) : "—"}
                       </td>
 
                       {/* Actions */}

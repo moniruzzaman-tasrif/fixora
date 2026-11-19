@@ -10,10 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Booking, BookingStatus } from "@/types";
+import { Booking } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
-import getBooking from "@/lib/action/dataGet/getBooking";
-import { useCurrentUser } from "@/lib/session";
+import { ApiError } from "@/lib/api";
+import {
+  getTechnicianBookings,
+  updateBookingStatus,
+} from "@/lib/action/api/technicianApi";
 import {
   Check,
   XCircle,
@@ -24,151 +27,153 @@ import {
   Calendar,
   X,
   CreditCard,
+  AlertCircle,
 } from "lucide-react";
 
 export default function TechnicianRequestsPage() {
-  const { user } = useCurrentUser();
   const [requests, setRequests] = React.useState<Booking[]>([]);
+  const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
+    "loading"
+  );
+  const [loadError, setLoadError] = React.useState("");
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
-    getBooking()
-      .then((data) => {
-        if (!cancelled && Array.isArray(data)) {
-          const email = user?.email?.toLowerCase();
-          const filtered = email
-            ? data.filter((b) => b.technicianEmail?.toLowerCase() === email)
-            : data;
-          setRequests(filtered);
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to fetch technician requests from database:", err);
-      });
 
+    async function load() {
+      setLoadState("loading");
+      try {
+        const data = await getTechnicianBookings();
+        if (cancelled) return;
+        setRequests(Array.isArray(data) ? data : []);
+        setLoadState("ready");
+      } catch (err: unknown) {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof ApiError
+            ? err.message
+            : "We could not load your job requests. Please try again."
+        );
+        setLoadState("error");
+      }
+    }
+
+    void load();
     return () => {
       cancelled = true;
     };
-  }, [user?.email]);
+  }, [reloadKey]);
 
   const [activeTab, setActiveTab] = React.useState<string>("all");
-  const [rejectModalBooking, setRejectModalBooking] = React.useState<Booking | null>(null);
-  const [completeModalBooking, setCompleteModalBooking] = React.useState<Booking | null>(null);
+  const [rejectModalBooking, setRejectModalBooking] =
+    React.useState<Booking | null>(null);
+  const [completeModalBooking, setCompleteModalBooking] =
+    React.useState<Booking | null>(null);
   const [finalAmountInput, setFinalAmountInput] = React.useState<string>("");
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [busyBookingId, setBusyBookingId] = React.useState<string | null>(null);
 
-  const filteredRequests = requests.filter((r) => {
+  const filteredRequests = requests.filter((request) => {
     if (activeTab === "all") return true;
-    return r.status === activeTab;
+    return request.status === activeTab;
   });
 
-  // Action: Accept Request (requested -> accepted)
-  const handleAccept = async (booking: Booking) => {
+  const applyBooking = (updated: Booking) => {
+    setRequests((prev) =>
+      prev.map((row) =>
+        row._id === updated._id ? { ...row, ...updated } : row
+      )
+    );
+  };
+
+  const runTransition = async (
+    booking: Booking,
+    status: Booking["status"],
+    successMessage: string,
+    finalAmount?: number
+  ) => {
+    setBusyBookingId(booking._id);
     try {
-      // TODO(owner): call PATCH /api/bookings/:id/status { status: 'accepted' }
-      setRequests((prev) =>
-        prev.map((b) =>
-          b._id === booking._id ? { ...b, status: "accepted" as BookingStatus } : b
-        )
+      const { booking: updated } = await updateBookingStatus(
+        booking._id,
+        status,
+        finalAmount
       );
-      toast.success(`Accepted repair request for ${booking.customerName}.`);
-    } catch {
-      toast.error("Failed to accept request.");
+      applyBooking(updated);
+      toast.success(successMessage);
+      return true;
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Could not update the booking."
+      );
+      return false;
+    } finally {
+      setBusyBookingId(null);
     }
   };
 
-  // Action: Confirm Reject Request (requested -> rejected)
+  const handleAccept = (booking: Booking) =>
+    runTransition(
+      booking,
+      "accepted",
+      `Accepted the repair request from ${booking.customerName}.`
+    );
+
   const handleConfirmReject = async () => {
     if (!rejectModalBooking) return;
     setIsProcessing(true);
-
-    try {
-      // TODO(owner): call PATCH /api/bookings/:id/status { status: 'rejected' }
-      setRequests((prev) =>
-        prev.map((b) =>
-          b._id === rejectModalBooking._id
-            ? { ...b, status: "rejected" as BookingStatus }
-            : b
-        )
-      );
-      toast.success("Job request rejected.");
-      setRejectModalBooking(null);
-    } catch {
-      toast.error("Failed to reject request.");
-    } finally {
-      setIsProcessing(false);
-    }
+    const ok = await runTransition(
+      rejectModalBooking,
+      "rejected",
+      "Job request rejected."
+    );
+    if (ok) setRejectModalBooking(null);
+    setIsProcessing(false);
   };
 
-  // Action: Start Work (accepted -> in-progress)
-  const handleStartWork = async (booking: Booking) => {
-    try {
-      // TODO(owner): call PATCH /api/bookings/:id/status { status: 'in-progress' }
-      setRequests((prev) =>
-        prev.map((b) =>
-          b._id === booking._id
-            ? { ...b, status: "in-progress" as BookingStatus }
-            : b
-        )
-      );
-      toast.info(`Work started on "${booking.serviceTitle}". Status updated to In Progress.`);
-    } catch {
-      toast.error("Failed to start job.");
-    }
-  };
+  const handleStartWork = (booking: Booking) =>
+    runTransition(
+      booking,
+      "in-progress",
+      `Work started on "${booking.serviceTitle}".`
+    );
 
-  // Open Complete Modal (in-progress -> completed)
   const openCompleteModal = (booking: Booking) => {
     setCompleteModalBooking(booking);
-    setFinalAmountInput((booking.finalAmount || booking.basePrice).toString());
+    setFinalAmountInput(
+      (booking.finalAmount || booking.basePrice).toString()
+    );
   };
 
-  // Action: Confirm Mark Completed with Final Amount
-  const handleConfirmComplete = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleConfirmComplete = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!completeModalBooking) return;
 
-    const amountNum = parseFloat(finalAmountInput);
-    if (isNaN(amountNum) || amountNum <= 0) {
+    const amount = Number(finalAmountInput);
+    if (Number.isNaN(amount) || amount <= 0) {
       toast.error("Final amount must be a number greater than 0.");
       return;
     }
 
     setIsProcessing(true);
-
-    try {
-      // TODO(owner): call PATCH /api/bookings/:id/status { status: 'completed', finalAmount: amountNum }
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      setRequests((prev) =>
-        prev.map((b) =>
-          b._id === completeModalBooking._id
-            ? {
-                ...b,
-                status: "completed" as BookingStatus,
-                finalAmount: amountNum,
-                paymentStatus: "unpaid",
-              }
-            : b
-        )
-      );
-
-      toast.success(
-        `Job marked completed! Final amount set to ${formatCurrency(amountNum)}. Customer can now pay via Stripe.`
-      );
-      setCompleteModalBooking(null);
-    } catch {
-      toast.error("Failed to mark completed.");
-    } finally {
-      setIsProcessing(false);
-    }
+    const ok = await runTransition(
+      completeModalBooking,
+      "completed",
+      `Job completed. Final amount ${formatCurrency(amount)} is now payable by the customer.`,
+      amount
+    );
+    if (ok) setCompleteModalBooking(null);
+    setIsProcessing(false);
   };
 
   const tabs = [
-    { id: "all", label: "All Requests", count: requests.length },
+    { id: "all", label: "All", count: requests.length },
     {
       id: "requested",
-      label: "Pending",
+      label: "Requested",
       count: requests.filter((r) => r.status === "requested").length,
     },
     {
@@ -192,10 +197,9 @@ export default function TechnicianRequestsPage() {
     <div className="space-y-6">
       <PageHeader
         heading="Manage Service Requests"
-        description="Advance jobs through the strictly enforced status pipeline: Requested → Accepted → In Progress → Completed."
+        description="Advance jobs through the enforced status pipeline: Requested → Accepted → In Progress → Completed."
       />
 
-      {/* Status Filter Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 pb-3">
         {tabs.map((tab) => (
           <button
@@ -222,7 +226,24 @@ export default function TechnicianRequestsPage() {
         ))}
       </div>
 
-      {filteredRequests.length === 0 ? (
+      {loadState === "loading" ? (
+        <div role="status" aria-label="Loading requests" className="space-y-3">
+          {[0, 1, 2].map((key) => (
+            <div
+              key={key}
+              className="h-20 animate-pulse rounded-xl border border-slate-200 bg-white"
+            />
+          ))}
+        </div>
+      ) : loadState === "error" ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Could not load job requests"
+          description={loadError}
+          actionLabel="Try Again"
+          onAction={() => setReloadKey((key) => key + 1)}
+        />
+      ) : filteredRequests.length === 0 ? (
         <EmptyState
           title="No requests in this view"
           description="You don't have any customer requests matching this status filter."
@@ -234,10 +255,10 @@ export default function TechnicianRequestsPage() {
               <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200">
                 <tr>
                   <th className="px-5 py-3.5">Customer & Contact</th>
-                  <th className="px-5 py-3.5">Service Requested</th>
+                  <th className="px-5 py-3.5">Service & Amount</th>
                   <th className="px-5 py-3.5">Preferred Schedule</th>
                   <th className="px-5 py-3.5">Problem Description</th>
-                  <th className="px-5 py-3.5">Pipeline Status</th>
+                  <th className="px-5 py-3.5">Status</th>
                   <th className="px-5 py-3.5 text-right">Allowed Actions</th>
                 </tr>
               </thead>
@@ -248,7 +269,6 @@ export default function TechnicianRequestsPage() {
                     key={request._id}
                     className="hover:bg-slate-50/70 transition-colors"
                   >
-                    {/* Customer */}
                     <td className="px-5 py-4">
                       <p className="font-bold text-slate-900 text-sm">
                         {request.customerName}
@@ -263,7 +283,6 @@ export default function TechnicianRequestsPage() {
                       </div>
                     </td>
 
-                    {/* Service */}
                     <td className="px-5 py-4">
                       <p className="font-semibold text-slate-800 text-xs">
                         {request.serviceTitle}
@@ -271,13 +290,14 @@ export default function TechnicianRequestsPage() {
                       <span className="text-[11px] text-teal-700 font-medium">
                         {request.category}
                       </span>
-                      <p className="text-xs font-bold text-slate-900 mt-1">
-                        Amount:{" "}
-                        {formatCurrency(request.finalAmount || request.basePrice)}
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Base: {formatCurrency(request.basePrice)}
+                      </p>
+                      <p className="text-xs font-bold text-slate-900">
+                        Final: {formatCurrency(request.finalAmount || request.basePrice)}
                       </p>
                     </td>
 
-                    {/* Preferred Date */}
                     <td className="px-5 py-4 text-xs font-medium text-slate-600">
                       <div className="flex items-center gap-1">
                         <Calendar className="size-3.5 text-slate-400" />
@@ -285,27 +305,29 @@ export default function TechnicianRequestsPage() {
                       </div>
                     </td>
 
-                    {/* Problem Description */}
                     <td className="px-5 py-4 text-xs text-slate-600 max-w-xs">
                       <p className="line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
                         &quot;{request.problemDescription}&quot;
                       </p>
                     </td>
 
-                    {/* Status */}
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4 space-y-1">
                       <StatusBadge status={request.status} />
+                      {request.status === "completed" && (
+                        <div>
+                          <StatusBadge status={request.paymentStatus} />
+                        </div>
+                      )}
                     </td>
 
-                    {/* Actions: ONLY valid transitions per assignment rules */}
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        {/* Status === 'requested' -> Accept or Reject */}
                         {request.status === "requested" && (
                           <>
                             <Button
                               size="sm"
                               onClick={() => handleAccept(request)}
+                              disabled={busyBookingId === request._id}
                               className="text-xs h-8 bg-teal-700 hover:bg-teal-800 text-white font-semibold gap-1 shadow-xs"
                             >
                               <Check className="size-3.5" />
@@ -315,6 +337,7 @@ export default function TechnicianRequestsPage() {
                               size="sm"
                               variant="outline"
                               onClick={() => setRejectModalBooking(request)}
+                              disabled={busyBookingId === request._id}
                               className="text-xs h-8 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold"
                             >
                               <XCircle className="size-3.5" />
@@ -323,11 +346,11 @@ export default function TechnicianRequestsPage() {
                           </>
                         )}
 
-                        {/* Status === 'accepted' -> Start Work */}
                         {request.status === "accepted" && (
                           <Button
                             size="sm"
                             onClick={() => handleStartWork(request)}
+                            disabled={busyBookingId === request._id}
                             className="text-xs h-8 bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-1 shadow-xs"
                           >
                             <Play className="size-3.5" />
@@ -335,11 +358,11 @@ export default function TechnicianRequestsPage() {
                           </Button>
                         )}
 
-                        {/* Status === 'in-progress' -> Mark Completed */}
                         {request.status === "in-progress" && (
                           <Button
                             size="sm"
                             onClick={() => openCompleteModal(request)}
+                            disabled={busyBookingId === request._id}
                             className="text-xs h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1 shadow-xs"
                           >
                             <CheckCircle2 className="size-3.5" />
@@ -347,15 +370,15 @@ export default function TechnicianRequestsPage() {
                           </Button>
                         )}
 
-                        {/* Status === 'completed' -> Show Payment Status */}
                         {request.status === "completed" && (
                           <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md bg-slate-100 text-slate-700">
                             <CreditCard className="size-3.5" />
-                            {request.paymentStatus === "paid" ? "Paid" : "Awaiting Payment"}
+                            {request.paymentStatus === "paid"
+                              ? "Paid by customer"
+                              : "Awaiting payment"}
                           </span>
                         )}
 
-                        {/* Final statuses (rejected, cancelled) -> No action */}
                         {["rejected", "cancelled"].includes(request.status) && (
                           <span className="text-xs text-slate-400 italic">
                             Closed
@@ -371,23 +394,21 @@ export default function TechnicianRequestsPage() {
         </Card>
       )}
 
-      {/* Reject Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!rejectModalBooking}
         onClose={() => setRejectModalBooking(null)}
         onConfirm={handleConfirmReject}
         title="Reject Repair Request?"
-        description={`Are you sure you want to decline the request for "${rejectModalBooking?.serviceTitle}" from ${rejectModalBooking?.customerName}? This will notify the customer.`}
+        description={`Are you sure you want to decline the request for "${rejectModalBooking?.serviceTitle}" from ${rejectModalBooking?.customerName}? This cannot be undone.`}
         confirmLabel="Yes, Reject Request"
         cancelLabel="Go Back"
         variant="danger"
         isLoading={isProcessing}
       />
 
-      {/* Mark Completed Modal with Final Amount Input */}
       {completeModalBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in-0">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-slate-200 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl border border-slate-200">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <h3 className="text-lg font-bold text-slate-900">
                 Mark Job Completed
@@ -396,6 +417,7 @@ export default function TechnicianRequestsPage() {
                 type="button"
                 onClick={() => setCompleteModalBooking(null)}
                 className="text-slate-400 hover:text-slate-600"
+                aria-label="Close dialog"
               >
                 <X className="size-5" />
               </button>
@@ -409,27 +431,29 @@ export default function TechnicianRequestsPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="finalAmount">
-                  Final Amount to Bill (USD) <span className="text-red-500">*</span>
+                  Final Amount to Bill (USD){" "}
+                  <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="finalAmount"
                   type="number"
                   step="0.01"
-                  min="1"
+                  min="0.01"
                   value={finalAmountInput}
                   onChange={(e) => setFinalAmountInput(e.target.value)}
                   placeholder="e.g. 50"
                   required
                 />
                 <p className="text-[11px] text-slate-400">
-                  Pre-filled with base price (${completeModalBooking.basePrice}). Adjust
-                  only if additional parts or labor were required.
+                  Pre-filled with the base price (
+                  {formatCurrency(completeModalBooking.basePrice)}). Adjust only if
+                  additional parts or labor were required.
                 </p>
               </div>
 
               <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 text-xs">
-                ✓ Once confirmed, a <strong>Pay Now</strong> button will appear on the
-                customer&apos;s dashboard to complete payment via Stripe.
+                ✓ Once confirmed, a <strong>Pay Now</strong> button appears on the
+                customer&apos;s dashboard to pay through Stripe.
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">

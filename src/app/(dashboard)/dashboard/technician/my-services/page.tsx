@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ImageUploadField } from "@/components/shared/image-upload-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,14 @@ import { Card } from "@/components/ui/card";
 import { Service, ServiceCategory, ServiceMode } from "@/types";
 import { SERVICE_CATEGORIES } from "@/lib/constants";
 import { formatCurrency } from "@/lib/format";
+import { ApiError } from "@/lib/api";
+import { uploadImage } from "@/lib/upload";
+import {
+  getMyServices,
+  updateService,
+  deleteService,
+  setServiceAvailability,
+} from "@/lib/action/api/technicianApi";
 import {
   PlusCircle,
   Edit2,
@@ -25,76 +34,62 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
-import getService from "@/lib/action/dataGet/getService";
-import { useCurrentUser } from "@/lib/session";
 
 export default function MyServicesPage() {
-  const { user, isPending } = useCurrentUser();
-
   const [services, setServices] = React.useState<Service[]>([]);
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "error">(
     "loading"
   );
+  const [loadError, setLoadError] = React.useState("");
   const [reloadKey, setReloadKey] = React.useState(0);
 
-  // Loads real services from the Express API (via getService()).
-  // If the technician is logged in, only services matching their email are shown.
-  // If not logged in yet (e.g. testing / demo), all services from the database are shown.
   React.useEffect(() => {
-    if (isPending) return;
-
     let cancelled = false;
 
-    async function loadData() {
+    async function load() {
+      setLoadState("loading");
       try {
-        setLoadState("loading");
-        const dataService: Service[] = await getService();
+        const data = await getMyServices();
         if (cancelled) return;
-
-        const allServices = Array.isArray(dataService) ? dataService : [];
-        const email = user?.email?.toLowerCase();
-
-        const filtered = email
-          ? allServices.filter(
-              (service) => service.technicianEmail?.toLowerCase() === email
-            )
-          : allServices;
-
-        setServices(filtered);
+        setServices(Array.isArray(data) ? data : []);
         setLoadState("ready");
-      } catch (err) {
-        console.error("Failed to load services from API:", err);
+      } catch (err: unknown) {
         if (cancelled) return;
+        setLoadError(
+          err instanceof ApiError
+            ? err.message
+            : "We could not load your services. Please try again."
+        );
         setLoadState("error");
       }
     }
 
-    loadData();
-
+    void load();
     return () => {
       cancelled = true;
     };
-  }, [user?.email, isPending, reloadKey]);
+  }, [reloadKey]);
 
-  const handleRetry = () => {
-    setLoadState("loading");
-    setReloadKey((key) => key + 1);
-  };
-
-  const isLoading = isPending || loadState === "loading";
+  const reload = () => setReloadKey((key) => key + 1);
 
   const [editingService, setEditingService] = React.useState<Service | null>(null);
-  const [deleteModalService, setDeleteModalService] = React.useState<Service | null>(null);
+  const [deleteModalService, setDeleteModalService] = React.useState<Service | null>(
+    null
+  );
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [busyServiceId, setBusyServiceId] = React.useState<string | null>(null);
 
   // Edit form state
   const [editTitle, setEditTitle] = React.useState("");
-  const [editCategory, setEditCategory] = React.useState<ServiceCategory>("Smartphone");
+  const [editCategory, setEditCategory] =
+    React.useState<ServiceCategory>("Smartphone");
   const [editPrice, setEditPrice] = React.useState("");
   const [editDuration, setEditDuration] = React.useState("");
   const [editMode, setEditMode] = React.useState<ServiceMode>("Home Visit");
-
-
+  const [editArea, setEditArea] = React.useState("");
+  const [editDescription, setEditDescription] = React.useState("");
+  const [editImageFile, setEditImageFile] = React.useState<File | null>(null);
+  const [editImageError, setEditImageError] = React.useState<string | undefined>();
 
   const startEdit = (service: Service) => {
     setEditingService(service);
@@ -103,89 +98,123 @@ export default function MyServicesPage() {
     setEditPrice(service.basePrice.toString());
     setEditDuration(service.estimatedDuration);
     setEditMode(service.serviceMode);
+    setEditArea(service.serviceArea);
+    setEditDescription(service.description);
+    setEditImageFile(null);
+    setEditImageError(undefined);
   };
 
-  // Handle Save Edit: Note that per Assignment PDF & AGENTS.md:
-  // "After editing, set approvalStatus back to 'pending'"
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const closeEdit = () => setEditingService(null);
+
+  /** Saves the edit. The server whitelists fields and resets approval. */
+  const handleSaveEdit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!editingService) return;
 
-    const parsedPrice = parseFloat(editPrice);
-    if (!editTitle.trim() || isNaN(parsedPrice) || parsedPrice <= 0) {
-      toast.error("Please enter a valid title and positive price.");
+    const parsedPrice = Number(editPrice);
+    if (!editTitle.trim() || editTitle.trim().length < 3) {
+      toast.error("Please enter a service title of at least 3 characters.");
+      return;
+    }
+    if (!editDescription.trim()) {
+      toast.error("Description cannot be empty.");
+      return;
+    }
+    if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
+      toast.error("Base price must be a positive number.");
+      return;
+    }
+    if (!editDuration.trim() || !editArea.trim()) {
+      toast.error("Duration and service area are required.");
       return;
     }
 
     setIsProcessing(true);
 
     try {
-      // -----------------------------------------------------------------------
-      // TODO(owner): call PATCH /api/services/:id
-      // -----------------------------------------------------------------------
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const imageUrl = editImageFile
+        ? await uploadImage(editImageFile)
+        : editingService.image;
+
+      const { service: updated } = await updateService(editingService._id, {
+        title: editTitle.trim(),
+        category: editCategory,
+        description: editDescription.trim(),
+        image: imageUrl,
+        basePrice: parsedPrice,
+        estimatedDuration: editDuration.trim(),
+        serviceMode: editMode,
+        serviceArea: editArea.trim(),
+      });
 
       setServices((prev) =>
-        prev.map((s) =>
-          s._id === editingService._id
-            ? {
-                ...s,
-                title: editTitle,
-                category: editCategory,
-                basePrice: parsedPrice,
-                estimatedDuration: editDuration,
-                serviceMode: editMode,
-                approvalStatus: "pending", // Resets to pending after modification!
-              }
-            : s
+        prev.map((service) =>
+          service._id === updated._id ? { ...service, ...updated } : service
         )
       );
 
       toast.success(
-        "Service updated! Per security policy, edited services reset to Pending status for admin re-verification."
+        "Service updated. It has been re-submitted for admin approval."
       );
-      setEditingService(null);
-    } catch {
-      toast.error("Failed to update service.");
+      closeEdit();
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Failed to update the service."
+      );
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Toggle Availability
   const handleToggleAvailability = async (service: Service) => {
-    const updatedState = !service.isAvailable;
+    const nextState = !service.isAvailable;
+    setBusyServiceId(service._id);
 
     try {
-      // TODO(owner): call PATCH /api/services/:id/availability
+      const { service: updated } = await setServiceAvailability(
+        service._id,
+        nextState
+      );
       setServices((prev) =>
-        prev.map((s) =>
-          s._id === service._id ? { ...s, isAvailable: updatedState } : s
+        prev.map((row) =>
+          row._id === service._id ? { ...row, ...updated } : row
         )
       );
-
       toast.success(
-        `Service is now ${updatedState ? "Available publicly" : "Hidden from public catalog"}.`
+        nextState
+          ? "Service is now available in the public catalog."
+          : "Service is now hidden from the public catalog."
       );
-    } catch {
-      toast.error("Failed to toggle availability.");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Failed to update availability."
+      );
+    } finally {
+      setBusyServiceId(null);
     }
   };
 
-  // Delete Service
   const handleConfirmDelete = async () => {
     if (!deleteModalService) return;
     setIsProcessing(true);
 
     try {
-      // TODO(owner): call DELETE /api/services/:id
-      await new Promise((resolve) => setTimeout(resolve, 600));
-
-      setServices((prev) => prev.filter((s) => s._id !== deleteModalService._id));
+      await deleteService(deleteModalService._id);
+      setServices((prev) =>
+        prev.filter((service) => service._id !== deleteModalService._id)
+      );
       toast.success(`"${deleteModalService.title}" was deleted successfully.`);
       setDeleteModalService(null);
-    } catch {
-      toast.error("Failed to delete service.");
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Failed to delete the service."
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -195,7 +224,7 @@ export default function MyServicesPage() {
     <div className="space-y-6">
       <PageHeader
         heading="My Repair Services"
-        description="Manage, edit, or toggle availability of your listed repair services. Note that edits reset approval to pending."
+        description="Manage, edit, or toggle availability of your listed repair services. Every edit resets the listing to pending approval."
       >
         <Link href="/dashboard/technician/add-service">
           <Button className="bg-teal-700 hover:bg-teal-800 text-white font-semibold gap-2 shadow-xs">
@@ -205,7 +234,7 @@ export default function MyServicesPage() {
         </Link>
       </PageHeader>
 
-      {isLoading ? (
+      {loadState === "loading" ? (
         <Card
           className="border border-slate-200/90 shadow-xs overflow-hidden"
           role="status"
@@ -233,15 +262,15 @@ export default function MyServicesPage() {
         <EmptyState
           icon={AlertCircle}
           title="Could not load your services"
-          description="We could not reach the repair service server. Please check your connection and try again."
+          description={loadError}
           actionLabel="Try Again"
-          onAction={handleRetry}
+          onAction={reload}
         />
       ) : services.length === 0 ? (
         <EmptyState
           icon={Wrench}
           title="No services added yet"
-          description="You haven't published any repair services yet. Start offering your repairs to thousands of homeowners."
+          description="You haven't published any repair services yet. Start offering your repairs to homeowners across Dhaka."
           actionLabel="Add Your First Service"
           actionHref="/dashboard/technician/add-service"
         />
@@ -266,7 +295,6 @@ export default function MyServicesPage() {
                     key={service._id}
                     className="hover:bg-slate-50/70 transition-colors"
                   >
-                    {/* Image & Title */}
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="relative size-12 rounded-lg overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
@@ -276,6 +304,7 @@ export default function MyServicesPage() {
                               alt={service.title}
                               fill
                               className="object-cover"
+                              sizes="48px"
                             />
                           ) : (
                             <div className="flex size-full items-center justify-center bg-teal-50 text-teal-700">
@@ -294,27 +323,24 @@ export default function MyServicesPage() {
                       </div>
                     </td>
 
-                    {/* Category */}
                     <td className="px-5 py-4 font-medium text-xs text-teal-800">
                       {service.category}
                     </td>
 
-                    {/* Base Price */}
                     <td className="px-5 py-4 font-bold text-slate-900 text-sm">
                       {formatCurrency(service.basePrice)}
                     </td>
 
-                    {/* Approval Status Badge */}
                     <td className="px-5 py-4">
                       <StatusBadge status={service.approvalStatus} />
                     </td>
 
-                    {/* Availability Toggle */}
                     <td className="px-5 py-4">
                       <button
                         type="button"
                         onClick={() => handleToggleAvailability(service)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                        disabled={busyServiceId === service._id}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors disabled:opacity-60 ${
                           service.isAvailable
                             ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
                             : "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200"
@@ -335,7 +361,6 @@ export default function MyServicesPage() {
                       </button>
                     </td>
 
-                    {/* Actions */}
                     <td className="px-5 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Button
@@ -344,6 +369,7 @@ export default function MyServicesPage() {
                           onClick={() => startEdit(service)}
                           className="size-8 text-slate-600 hover:text-teal-700 hover:bg-teal-50"
                           title="Edit Service"
+                          aria-label={`Edit ${service.title}`}
                         >
                           <Edit2 className="size-4" />
                         </Button>
@@ -354,6 +380,7 @@ export default function MyServicesPage() {
                           onClick={() => setDeleteModalService(service)}
                           className="size-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
                           title="Delete Service"
+                          aria-label={`Delete ${service.title}`}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -367,18 +394,19 @@ export default function MyServicesPage() {
         </Card>
       )}
 
-      {/* Edit Service Modal Form */}
+      {/* Edit Service Modal */}
       {editingService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in-0">
-          <div className="w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl border border-slate-200 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 bg-black/50">
+          <div className="my-8 w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl border border-slate-200">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
               <h3 className="text-lg font-bold text-slate-900">
                 Edit Repair Service
               </h3>
               <button
                 type="button"
-                onClick={() => setEditingService(null)}
+                onClick={closeEdit}
                 className="text-slate-400 hover:text-slate-600"
+                aria-label="Close edit dialog"
               >
                 <X className="size-5" />
               </button>
@@ -420,6 +448,7 @@ export default function MyServicesPage() {
                     id="editPrice"
                     type="number"
                     step="0.01"
+                    min="0.01"
                     value={editPrice}
                     onChange={(e) => setEditPrice(e.target.value)}
                     required
@@ -452,17 +481,52 @@ export default function MyServicesPage() {
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <Label htmlFor="editArea">Service Area</Label>
+                <Input
+                  id="editArea"
+                  value={editArea}
+                  onChange={(e) => setEditArea(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="editDescription">Description</Label>
+                <textarea
+                  id="editDescription"
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 p-3 text-sm text-slate-800 focus:outline-teal-600 focus:ring-1 focus:ring-teal-600"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Service image</Label>
+                <p className="text-xs text-slate-500">
+                  Leave empty to keep the current image.
+                </p>
+                <ImageUploadField
+                  id="editImage"
+                  shape="banner"
+                  value={editImageFile}
+                  onChange={setEditImageFile}
+                  onError={setEditImageError}
+                  error={editImageError}
+                  disabled={isProcessing}
+                  hint="Optional replacement. JPG, PNG or WebP up to 2 MB."
+                />
+              </div>
+
               <div className="p-3 rounded-lg bg-amber-50 text-amber-800 text-xs">
-                ⚠️ Notice: Per assignment rule, saving changes will automatically
-                reset approval status to <strong>Pending</strong> for admin review.
+                Saving changes resets the approval status to{" "}
+                <strong>Pending</strong> for admin review.
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingService(null)}
-                >
+                <Button type="button" variant="outline" onClick={closeEdit}>
                   Cancel
                 </Button>
                 <Button
@@ -478,7 +542,6 @@ export default function MyServicesPage() {
         </div>
       )}
 
-      {/* Delete Service Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!deleteModalService}
         onClose={() => setDeleteModalService(null)}
