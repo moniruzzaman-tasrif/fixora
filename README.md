@@ -14,6 +14,14 @@ moderate listings and review platform activity.
 - Role-specific dashboards, profile updates, and service moderation.
 - Hosted Stripe Checkout for completed, unpaid bookings.
 
+## Live deployment
+
+- Web app: https://fixora-eosin.vercel.app/
+- API: https://fixora-server.vercel.app/
+
+Test accounts are listed in the assignment submission form. Passwords are not
+committed to this repository.
+
 ## Technology
 
 - Frontend: Next.js, React, TypeScript, Tailwind CSS, BetterAuth, Lucide, Sonner.
@@ -91,8 +99,6 @@ Run the API unit tests from `fixora-server`:
 npm test
 ```
 
-The live deployment URL and administrator test credentials have not been verified
-or supplied for this repository. No Git remotes are configured in this checkout,
-so client/server repository URLs are also unavailable. Add those details when
-provided, and share credentials through a secure channel rather than committing
-passwords.
+The live deployment URL is listed above. No Git remotes are configured in this
+checkout, so the client/server repository URLs are unavailable here. Share
+passwords through the submission form rather than committing them.
