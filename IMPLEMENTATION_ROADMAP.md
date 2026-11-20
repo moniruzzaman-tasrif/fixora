@@ -1195,6 +1195,19 @@ database records remain untouched.
 
 **Depends on:** Steps 2–20.
 
+**Role-data visibility follow-up — 19 November 2026**
+
+- [x] Backend dashboard list filters are derived from the verified database user:
+  admins receive platform-wide filters, technicians receive their services and
+  assigned bookings, and customers receive their own bookings and payments.
+- [x] Non-admin booking list queries ignore client-supplied ownership filters.
+- [x] Frontend dashboard list APIs reject non-array success responses instead of
+  showing a misleading empty state.
+- [x] Admin and technician booking charts include rejected and cancelled records
+  in the closed-status count.
+- [x] Added focused backend ownership-filter and frontend list-shape tests.
+- [ ] Remaining Step 21 visual, accessibility, and release checks are still pending.
+
 ---
 
 ### Step 22 — Deployment & Final Assignment Checklist
