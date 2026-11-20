@@ -49,7 +49,7 @@ export default function AdminTransactionsPage() {
       try {
         const data = await getAdminPayments();
         if (cancelled) return;
-        setPayments(Array.isArray(data) ? data : []);
+        setPayments(data);
         setLoadState("ready");
       } catch (err: unknown) {
         if (cancelled) return;

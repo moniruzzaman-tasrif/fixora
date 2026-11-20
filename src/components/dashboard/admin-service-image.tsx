@@ -1,3 +1,10 @@
+/**
+ * AdminServiceImage — image thumbnail used inside admin dashboard tables and
+ * moderation cards. Falls back to a Wrench placeholder icon when the URL is
+ * absent or the remote image fails to load, preventing broken-image slots.
+ * Uses a plain <img> tag (not next/image) because admin listings come from
+ * external ImgBB URLs with no fixed dimensions.
+ */
 "use client";
 
 import * as React from "react";
@@ -15,8 +22,10 @@ export function AdminServiceImage({
   alt,
   className,
 }: AdminServiceImageProps) {
+  // Track the src that caused an error so it is never re-attempted this session.
   const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
 
+  // Show the placeholder when there is no src or when the last load failed.
   if (!src || failedSrc === src) {
     return (
       <div

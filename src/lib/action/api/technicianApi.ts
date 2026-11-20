@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api";
+import { apiListRequest, apiRequest } from "@/lib/api";
 import {
   Booking,
   BookingStatus,
@@ -20,7 +20,7 @@ export type ServiceInput = {
 
 /** The signed-in technician's services, whatever their approval state. */
 export function getMyServices(): Promise<Service[]> {
-  return apiRequest<Service[]>("/services/mine");
+  return apiListRequest<Service>("/services/mine");
 }
 
 /**
@@ -67,7 +67,7 @@ export function setServiceAvailability(
 
 /** Bookings assigned to the signed-in technician's email. */
 export function getTechnicianBookings(): Promise<Booking[]> {
-  return apiRequest<Booking[]>("/booking");
+  return apiListRequest<Booking>("/booking");
 }
 
 /** Moves a job through the allowed workflow (server-enforced). */

@@ -1,3 +1,16 @@
+/**
+ * mini-chart.tsx — lightweight CSS/SVG chart components for dashboards.
+ * No external chart library required; built with plain SVG and Tailwind.
+ *
+ * Exports:
+ *  - MiniBarChart:   vertical bar chart; bars scale relative to the max value
+ *                    so there is always a full-height bar even on low counts.
+ *  - MiniDonutChart: SVG stroke-based donut; slices are drawn by accumulating
+ *                    strokeDashoffset so each segment starts where the last ended.
+ *
+ * Both are purely presentational: they accept pre-computed data arrays from
+ * dashboard pages and do not fetch data themselves.
+ */
 "use client";
 
 import * as React from "react";

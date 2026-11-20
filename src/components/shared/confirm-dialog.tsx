@@ -1,3 +1,12 @@
+/**
+ * ConfirmDialog — reusable modal for destructive or significant actions.
+ * Renders as a fixed overlay portal with ARIA roles and keyboard-accessible
+ * focus trap (via useAccessibleDialog). Supports four severity variants that
+ * control the icon and confirm-button colour.
+ *
+ * Usage: mount once in a parent component, control visibility with `isOpen`.
+ * Always disabled while `isLoading` so the action cannot be double-submitted.
+ */
 "use client";
 
 import * as React from "react";

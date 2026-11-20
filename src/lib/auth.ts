@@ -69,7 +69,8 @@ export const auth = betterAuth({
         // Role changes go through the protected admin API, never a self-update.
         before: async (user) => {
           if (user.role !== undefined) {
-            const { role: _ignored, ...rest } = user;
+            const rest = { ...user };
+            delete rest.role;
             return { data: rest };
           }
         },

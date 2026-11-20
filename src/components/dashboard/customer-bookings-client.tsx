@@ -56,7 +56,7 @@ export function CustomerBookingsClient() {
     getMyBookings()
       .then((data) => {
         if (cancelled) return;
-        setBookings(Array.isArray(data) ? data : []);
+        setBookings(data);
         setLoadState("ready");
       })
       .catch((error) => {

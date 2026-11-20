@@ -1,3 +1,9 @@
+/**
+ * StatCard — single metric tile used in dashboard overview grids.
+ * Displays a labelled numeric value, an optional trend indicator (green for
+ * positive, muted for neutral), and a tinted icon chip. Accepts any Lucide
+ * icon component via the `icon` prop.
+ */
 import * as React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";

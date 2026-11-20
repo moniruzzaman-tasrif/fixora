@@ -1,3 +1,9 @@
+/**
+ * StatusBadge — single source of truth for booking/service status colours.
+ * Looks up the given status string in the STATUS_COLORS map from constants.ts
+ * and renders a consistently styled pill. Falls back to a neutral slate badge
+ * for unknown statuses so new DB values don't break the UI.
+ */
 import { Badge } from "@/components/ui/badge";
 import { STATUS_COLORS } from "@/lib/constants";
 import { cn } from "@/lib/utils";

@@ -15,6 +15,7 @@ import { Service, Booking, Payment, User } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getSuccessfulPayments } from "@/lib/admin-metrics";
 import { ApiError } from "@/lib/api";
+import { getBookingStatusCounts } from "@/lib/dashboard-metrics";
 import { useCurrentUser } from "@/lib/session";
 import {
   getAdminUsers,
@@ -71,10 +72,10 @@ export default function AdminDashboardPage() {
             getAdminPayments(),
           ]);
         if (cancelled) return;
-        setUsers(Array.isArray(userRows) ? userRows : []);
-        setServices(Array.isArray(serviceRows) ? serviceRows : []);
-        setBookings(Array.isArray(bookingRows) ? bookingRows : []);
-        setPayments(Array.isArray(paymentRows) ? paymentRows : []);
+        setUsers(userRows);
+        setServices(serviceRows);
+        setBookings(bookingRows);
+        setPayments(paymentRows);
       } catch (err: unknown) {
         if (cancelled) return;
         setError(
@@ -136,28 +137,28 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const bookingStatusCounts = getBookingStatusCounts(bookings);
   const statusChartData = [
     {
       label: "Requested",
-      value: bookings.filter((b) => b.status === "requested").length,
+      value: bookingStatusCounts.requested,
       highlight: true,
     },
     {
       label: "Accepted",
-      value: bookings.filter((b) => b.status === "accepted").length,
+      value: bookingStatusCounts.accepted,
     },
     {
       label: "In Progress",
-      value: bookings.filter((b) => b.status === "in-progress").length,
+      value: bookingStatusCounts.inProgress,
     },
     {
       label: "Completed",
-      value: bookings.filter((b) => b.status === "completed").length,
+      value: bookingStatusCounts.completed,
     },
     {
       label: "Closed",
-      value: bookings.filter((b) => ["rejected", "cancelled"].includes(b.status))
-        .length,
+      value: bookingStatusCounts.closed,
     },
   ];
 

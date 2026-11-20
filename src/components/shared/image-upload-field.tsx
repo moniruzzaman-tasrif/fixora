@@ -1,3 +1,14 @@
+/**
+ * ImageUploadField — controlled file picker with local preview.
+ * Validates the selected file (type + size) via `validateImageFile` from
+ * @/lib/upload. The blob URL is managed in a ref to avoid stale-closure leaks;
+ * it is revoked on unmount and whenever a new file replaces the old one.
+ * Actual network upload happens on form submit (via `uploadImage`), not here.
+ *
+ * Shape variants:
+ *  - "avatar": 80 × 80 px circle — used for profile photos.
+ *  - "banner": 16:9 rectangle — used for service images.
+ */
 "use client";
 
 import * as React from "react";

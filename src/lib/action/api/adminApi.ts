@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api";
+import { apiListRequest, apiRequest } from "@/lib/api";
 import { ApprovalStatus, Booking, Payment, Service, User, UserRole } from "@/types";
 
 export type ProfileInput = {
@@ -11,7 +11,7 @@ export type ProfileInput = {
 
 /** All users on the platform (admin only). */
 export function getAdminUsers(): Promise<User[]> {
-  return apiRequest<User[]>("/admin/users");
+  return apiListRequest<User>("/admin/users");
 }
 
 /** Changes another user's role. The server refuses self-edits. */
@@ -27,7 +27,7 @@ export function updateUserRole(
 
 /** Every service, for moderation. */
 export function getAdminServices(): Promise<Service[]> {
-  return apiRequest<Service[]>("/admin/services");
+  return apiListRequest<Service>("/admin/services");
 }
 
 /** Approves or rejects a service. */
@@ -43,12 +43,12 @@ export function setServiceApproval(
 
 /** Every booking on the platform (read-only page). */
 export function getAdminBookings(): Promise<Booking[]> {
-  return apiRequest<Booking[]>("/admin/bookings");
+  return apiListRequest<Booking>("/admin/bookings");
 }
 
 /** Every payment record, newest first. */
 export function getAdminPayments(): Promise<Payment[]> {
-  return apiRequest<Payment[]>("/admin/payments");
+  return apiListRequest<Payment>("/admin/payments");
 }
 
 /** The signed-in user's own profile row. */

@@ -1,3 +1,9 @@
+/**
+ * EmptyState — full-width placeholder shown when a list or table returns no
+ * records. Renders an icon, heading, and description, plus an optional CTA
+ * that can either navigate (actionHref) or trigger a callback (onAction).
+ * Keeps an honest "nothing here" message rather than hiding empty sections.
+ */
 import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";

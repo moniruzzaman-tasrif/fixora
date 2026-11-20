@@ -69,7 +69,7 @@ export default function CustomerDashboardPage() {
     getMyBookings()
       .then((data) => {
         if (cancelled) return;
-        setBookings(Array.isArray(data) ? data : []);
+        setBookings(data);
         setLoadState("ready");
       })
       .catch((error) => {

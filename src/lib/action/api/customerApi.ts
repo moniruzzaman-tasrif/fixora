@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api";
+import { apiListRequest, apiRequest } from "@/lib/api";
 import { Booking, Payment } from "@/types";
 
 export interface CreateBookingInput {
@@ -11,7 +11,7 @@ export interface CreateBookingInput {
 
 /** The signed-in customer's own repair requests, newest first. */
 export function getMyBookings(): Promise<Booking[]> {
-  return apiRequest<Booking[]>("/booking/mine");
+  return apiListRequest<Booking>("/booking/mine");
 }
 
 /** Creates a request; the server fills price/technician/status from the DB. */
@@ -54,5 +54,5 @@ export function verifyPayment(
 
 /** The signed-in customer's payment history, newest first. */
 export function getMyPayments(): Promise<Payment[]> {
-  return apiRequest<Payment[]>("/payments/mine");
+  return apiListRequest<Payment>("/payments/mine");
 }

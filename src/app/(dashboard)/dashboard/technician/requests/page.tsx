@@ -51,7 +51,7 @@ export default function TechnicianRequestsPage() {
       try {
         const data = await getTechnicianBookings();
         if (cancelled) return;
-        setRequests(Array.isArray(data) ? data : []);
+        setRequests(data);
         setLoadState("ready");
       } catch (err: unknown) {
         if (cancelled) return;

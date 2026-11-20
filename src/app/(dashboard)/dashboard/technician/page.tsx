@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Service, Booking } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { ApiError } from "@/lib/api";
+import { getBookingStatusCounts } from "@/lib/dashboard-metrics";
 import { getMyServices, getTechnicianBookings } from "@/lib/action/api/technicianApi";
 import { useCurrentUser } from "@/lib/session";
 import {
@@ -46,8 +47,8 @@ export default function TechnicianDashboardPage() {
           getTechnicianBookings(),
         ]);
         if (cancelled) return;
-        setServices(Array.isArray(myServices) ? myServices : []);
-        setBookings(Array.isArray(myBookings) ? myBookings : []);
+        setServices(myServices);
+        setBookings(myBookings);
       } catch (err: unknown) {
         if (cancelled) return;
         setError(
@@ -74,23 +75,28 @@ export default function TechnicianDashboardPage() {
     (booking) => booking.status === "requested"
   ).length;
 
+  const bookingStatusCounts = getBookingStatusCounts(bookings);
   const statusChartData = [
     {
       label: "Requested",
-      value: bookings.filter((b) => b.status === "requested").length,
+      value: bookingStatusCounts.requested,
       highlight: true,
     },
     {
       label: "Accepted",
-      value: bookings.filter((b) => b.status === "accepted").length,
+      value: bookingStatusCounts.accepted,
     },
     {
       label: "In Progress",
-      value: bookings.filter((b) => b.status === "in-progress").length,
+      value: bookingStatusCounts.inProgress,
     },
     {
       label: "Completed",
-      value: bookings.filter((b) => b.status === "completed").length,
+      value: bookingStatusCounts.completed,
+    },
+    {
+      label: "Closed",
+      value: bookingStatusCounts.closed,
     },
   ];
 

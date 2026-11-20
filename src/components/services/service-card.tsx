@@ -3,7 +3,6 @@ import Image from "next/image";
 import { Service } from "@/types";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Wrench, Clock, MapPin, User, ArrowRight, Home, Store } from "lucide-react";
 
 interface ServiceCardProps {

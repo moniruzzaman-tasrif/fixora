@@ -46,7 +46,7 @@ export default function AdminBookingsPage() {
       try {
         const data = await getAdminBookings();
         if (cancelled) return;
-        setBookings(Array.isArray(data) ? data : []);
+        setBookings(data);
         setLoadState("ready");
       } catch (err: unknown) {
         if (cancelled) return;

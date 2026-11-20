@@ -56,7 +56,7 @@ export default function AdminServicesPage() {
       try {
         const data = await getAdminServices();
         if (cancelled) return;
-        setServices(Array.isArray(data) ? data : []);
+        setServices(data);
         setLoadState("ready");
       } catch (err: unknown) {
         if (cancelled) return;

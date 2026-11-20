@@ -1,3 +1,8 @@
+/**
+ * PageHeader — standard heading bar used at the top of every dashboard section.
+ * Renders a large heading and optional sub-description on the left, and passes
+ * `children` (action buttons, filters) into a right-aligned flex row.
+ */
 import * as React from "react";
 import { cn } from "@/lib/utils";
 

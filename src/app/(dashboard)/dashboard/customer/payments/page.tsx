@@ -36,12 +36,10 @@ export default function CustomerPaymentsPage() {
       .then((data) => {
         if (cancelled) return;
         // Newest first, even if the API order changes later.
-        const sorted = Array.isArray(data)
-          ? [...data].sort(
-              (a, b) =>
-                new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()
-            )
-          : [];
+        const sorted = [...data].sort(
+          (a, b) =>
+            new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime()
+        );
         setPayments(sorted);
         setLoadState("ready");
       })

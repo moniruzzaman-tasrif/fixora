@@ -56,7 +56,7 @@ export default function MyServicesPage() {
       try {
         const data = await getMyServices();
         if (cancelled) return;
-        setServices(Array.isArray(data) ? data : []);
+        setServices(data);
         setLoadState("ready");
       } catch (err: unknown) {
         if (cancelled) return;
